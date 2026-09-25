@@ -136,11 +136,22 @@ npm install
 
 ### 3. (Opcional) Configura las variables de entorno
 
-Copia el archivo de ejemplo si existe, o créalo tú mismo:
+El repositorio incluye la plantilla **`.env.example`**, que ya viene documentada con
+todas las variables disponibles y sus valores de ejemplo. Solo cópiala y rellénala:
 
 ```bash
-cp .env.example .env
+cp .env.example .env      # Linux / macOS / Git Bash
+copy .env.example .env    # Windows (CMD / PowerShell)
 ```
+
+Después, reinicia el servidor para que los cambios se apliquen:
+
+```bash
+npx expo start --clear
+```
+
+> `.env` está en `.gitignore` y **nunca** se sube al repositorio; `.env.example` sí se
+> versiona como plantilla.
 
 Ver la sección [Variables de entorno](#variables-de-entorno).
 
@@ -179,12 +190,27 @@ Expo carga automáticamente los archivos `.env` del proyecto y expone al código
 
 ### Cómo crearlas
 
-Crea un archivo **`.env`** en la raíz del proyecto:
+El proyecto incluye una plantilla lista en **`.env.example`**, con todas las variables
+disponibles, comentadas y explicadas. Cópiala a `.env` y rellena los valores:
 
 ```bash
-EXPO_PUBLIC_API_URL=https://api.example.com
-EXPO_PUBLIC_API_KEY=abc123
+cp .env.example .env      # Linux / macOS / Git Bash
+copy .env.example .env    # Windows (CMD / PowerShell)
 ```
+
+**Variables incluidas en la plantilla:**
+
+| Variable | Ejemplo | Para qué sirve |
+| --- | --- | --- |
+| `EXPO_PUBLIC_APP_ENV` | `development` | Entorno actual: `development`, `staging` o `production` |
+| `EXPO_PUBLIC_API_URL` | `https://api.example.com` | URL base del backend |
+| `EXPO_PUBLIC_API_KEY` | *(tu clave)* | Token de acceso a la API |
+| `EXPO_PUBLIC_ENABLE_DEV_TOOLS` | `true` | Muestra herramientas de desarrollo |
+| `EXPO_PUBLIC_API_TIMEOUT_MS` | `10000` | Timeout de las peticiones, en milisegundos |
+
+Además, la plantilla trae **comentadas** las variables de servicios externos por si el
+proyecto los necesita más adelante: Supabase, Firebase, Sentry, Google Maps, autenticación
+y notificaciones push. Solo descomenta y rellena las que uses.
 
 Y úsalas en el código así:
 
@@ -200,8 +226,8 @@ const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 | `.env.local` | Valores locales de tu máquina (**no** commitear) |
 | `.env.development` / `.env.production` | Valores por entorno |
 
-Estos archivos ya están ignorados por Git en `.gitignore` (junto con `!.env.example`, que
-**sí** se versiona como plantilla).
+Estos archivos ya están ignorados por Git en `.gitignore`, **excepto `.env.example`**,
+que sí se versiona como plantilla. Recuerda: `.env` nunca se sube.
 
 ### Reglas importantes
 
@@ -336,6 +362,8 @@ npx tsc --noEmit         # verificación de tipos sin generar archivos
 ```
 DesMov-Grupo31/
 ├── app.json            # Configuración de la app (Expo)
+├── .env.example        # Plantilla de variables de entorno (copiar a .env)
+├── .env                # Variables reales (NO se versiona, está en .gitignore)
 ├── assets/             # Imágenes, iconos y splash
 ├── src/
 │   ├── app/            # 🛣️ RUTAS — cada archivo es una pantalla
