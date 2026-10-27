@@ -75,13 +75,28 @@ export interface Cuadrilla {
   activa: boolean;
 }
 
-export interface RespuestaExitosa<T> {
+// Sobres de la API: una lista trae `meta`; una sola cosa viene con `meta: null`.
+export interface Meta {
+  total: number;
+  pagina: number;
+  porPagina: number;
+}
+
+export interface RespuestaLista<T> {
   datos: T[];
-  meta: { total: number; pagina: number; porPagina: number };
+  meta: Meta;
+}
+
+export interface RespuestaUno<T> {
+  datos: T;
+  meta: null;
 }
 
 export interface RespuestaError {
   error: { codigo: string; mensaje: string };
 }
 
-export type RespuestaApi<T> = RespuestaExitosa<T> | RespuestaError;
+export interface Sesion {
+  token: string;
+  usuario: Usuario;
+}

@@ -1,43 +1,70 @@
-import { cambiosDeEstadoMock, errorDeRedMock, listaVaciaMock, reportesMock } from '../mocks';
-import type { CambioDeEstado, Reporte, RespuestaApi, RespuestaExitosa } from '../tipos';
+// Única puerta de lectura y escritura de reportes (PDF, pág. 5).
 
-export type EscenarioMock = 'normal' | 'vacio' | 'errorRed';
+import { cambiosDeEstadoMock, reportesMock } from '@/mocks';
+import type { CambioDeEstado, EstadoReporte, Reporte, RespuestaLista, RespuestaUno } from '@/tipos';
 
-function respuesta<T>(datos: T[]): RespuestaExitosa<T> {
-  return {
-    datos: JSON.parse(JSON.stringify(datos)) as T[],
-    meta: { total: datos.length, pagina: 1, porPagina: 20 },
-  };
+import { ErrorApi, pedir, USAR_MOCKS } from './api';
+import { responderLista, responderUno, usuarioIdDeLaSesionMock } from './mock';
+
+export interface FiltrosDeReportes {
+  tipoId?: string;
+  zonaId?: string;
+  /** Sin estados, la API no trae los rechazados. */
+  estados?: EstadoReporte[];
+  pagina?: number;
+  porPagina?: number;
 }
 
-export async function obtenerReportes(
-  escenario: EscenarioMock = 'normal',
-): Promise<RespuestaApi<Reporte>> {
-  if (escenario === 'errorRed') return { error: { ...errorDeRedMock.error } };
-  if (escenario === 'vacio') return { datos: [], meta: { ...listaVaciaMock.meta } };
-  return respuesta([...reportesMock].sort((a, b) => b.creadoEn.localeCompare(a.creadoEn)));
+const masNuevoPrimero = (a: Reporte, b: Reporte) => b.creadoEn.localeCompare(a.creadoEn);
+
+/** Los reportes públicos de la ciudad (el mapa). */
+export function obtenerReportes(filtros: FiltrosDeReportes = {}): Promise<RespuestaLista<Reporte>> {
+  const { tipoId, zonaId, estados, pagina, porPagina } = filtros;
+
+  if (USAR_MOCKS) {
+    const filtrados = reportesMock.filter(
+      (r) =>
+        (tipoId === undefined || r.tipoId === tipoId) &&
+        (zonaId === undefined || r.zonaId === zonaId) &&
+        (estados ? estados.includes(r.estado) : r.estado !== 'rechazado'),
+    );
+    return responderLista([...filtrados].sort(masNuevoPrimero), { pagina, porPagina });
+  }
+
+  return pedir('/reportes', {
+    consulta: { tipoId, zonaId, estado: estados?.join(','), pagina, porPagina },
+  });
 }
 
-export async function obtenerReporte(id: string): Promise<RespuestaExitosa<Reporte>> {
-  return respuesta(reportesMock.filter((reporte) => reporte.id === id));
+export async function obtenerReporte(id: string): Promise<Reporte> {
+  if (USAR_MOCKS) {
+    return responderUno(
+      reportesMock.find((r) => r.id === id),
+      new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404),
+    );
+  }
+  return (await pedir<RespuestaUno<Reporte>>(`/reportes/${encodeURIComponent(id)}`)).datos;
 }
 
-export async function obtenerReportesDeUsuario(
-  autorId: string,
-): Promise<RespuestaExitosa<Reporte>> {
-  return respuesta(
-    reportesMock
-      .filter((reporte) => reporte.autorId === autorId)
-      .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn)),
-  );
+/** Los reportes del usuario de la sesión, del más nuevo al más viejo. */
+export function obtenerMisReportes(
+  paginado: { pagina?: number; porPagina?: number } = {},
+): Promise<RespuestaLista<Reporte>> {
+  if (USAR_MOCKS) {
+    const autorId = usuarioIdDeLaSesionMock();
+    const propios = reportesMock.filter((r) => r.autorId === autorId);
+    return responderLista([...propios].sort(masNuevoPrimero), paginado);
+  }
+  return pedir('/yo/reportes', { consulta: paginado });
 }
 
-export async function obtenerCambiosDeEstado(
-  reporteId: string,
-): Promise<RespuestaExitosa<CambioDeEstado>> {
-  return respuesta(
-    cambiosDeEstadoMock
-      .filter((cambio) => cambio.reporteId === reporteId)
-      .sort((a, b) => a.fechaHora.localeCompare(b.fechaHora)),
-  );
+/** «Qué fue pasando»: los cambios de estado, del más viejo al más nuevo. */
+export function obtenerCambiosDeEstado(reporteId: string): Promise<RespuestaLista<CambioDeEstado>> {
+  if (USAR_MOCKS) {
+    const cambios = cambiosDeEstadoMock
+      .filter((c) => c.reporteId === reporteId)
+      .sort((a, b) => a.fechaHora.localeCompare(b.fechaHora));
+    return responderLista(cambios);
+  }
+  return pedir(`/reportes/${encodeURIComponent(reporteId)}/cambios`);
 }

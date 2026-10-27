@@ -1,6 +1,6 @@
-import type { Reporte, RespuestaError, RespuestaExitosa } from '../tipos';
+import type { Reporte, RespuestaError, RespuestaLista } from '../tipos';
 
-export const listaVaciaMock: RespuestaExitosa<Reporte> = {
+export const listaVaciaMock: RespuestaLista<Reporte> = {
   datos: [],
   meta: { total: 0, pagina: 1, porPagina: 20 },
 };
