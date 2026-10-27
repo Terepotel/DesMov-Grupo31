@@ -3,6 +3,7 @@ import { Pressable, View, type PressableProps } from 'react-native';
 
 import type { Reporte, TipoDeReporte } from '@/tipos';
 import { formatearFecha } from '@/utilidades/fechas';
+import { textoAdhesiones } from '@/utilidades/reportes';
 
 import { DiscoTipo } from './disco-tipo';
 import { EstadoReporte, estadosReporte, estadoVisible } from './estado-reporte';
@@ -25,8 +26,7 @@ export function TarjetaReporte({ reporte, tipo, mostrarAdhesiones = false, ...pr
   const foto = reporte.fotos.find((f) => f.momento === 'problema');
   const nombre = tipo?.nombre ?? 'Reporte';
   const fecha = formatearFecha(reporte.creadoEn);
-  const adhesiones =
-    reporte.adhesiones === 1 ? '1 vecino se sumó' : `${reporte.adhesiones} vecinos se sumaron`;
+  const adhesiones = textoAdhesiones(reporte.adhesiones);
 
   return (
     <Pressable

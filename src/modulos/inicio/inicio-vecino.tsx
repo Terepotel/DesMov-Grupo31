@@ -5,7 +5,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { Encabezado } from '@/componentes/ui/encabezado';
-import { estadoVisible, type EstadoVisible } from '@/componentes/ui/estado-reporte';
+import {
+  estadoVisible,
+  ORDEN_ESTADOS_VISIBLES,
+  type EstadoVisible,
+} from '@/componentes/ui/estado-reporte';
 import { TarjetaReporte, TarjetaReporteCargando } from '@/componentes/ui/tarjeta-reporte';
 import { Texto } from '@/componentes/ui/texto';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
@@ -25,16 +29,6 @@ async function cargarInicioVecino() {
   ]);
   return { reportes: reportes.datos, total: reportes.meta.total, tipos: tipos.datos };
 }
-
-// «Sin enviar» primero: es lo único que el vecino puede tener que mirar.
-const ORDEN: EstadoVisible[] = [
-  'sin_enviar',
-  'recibido',
-  'en_revision',
-  'asignado',
-  'resuelto',
-  'rechazado',
-];
 
 /** Inicio del vecino: reportar algo nuevo, cómo van sus reportes y acceso a todo lo demás. */
 export function InicioVecino({ usuario }: { usuario: Usuario }) {
@@ -155,7 +149,7 @@ function MisReportes({
         />
       )}
       <ResumenEstados
-        filas={ORDEN.filter((estado) => cantidades.has(estado)).map((estado) => ({
+        filas={ORDEN_ESTADOS_VISIBLES.filter((estado) => cantidades.has(estado)).map((estado) => ({
           estado,
           cantidad: cantidades.get(estado)!,
         }))}
