@@ -1,15 +1,10 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { PantallaPendiente } from '@/componentes/pantalla-pendiente';
+import { PantallaDetalleReporte } from '@/modulos/detalle-reporte/pantalla-detalle-reporte';
 
-export default function PantallaDetalleReporte() {
+// `id` es un id (`rep-…`) o un número de seguimiento (`GCHU-…`): así abre también el enlace del QR
+// `desmovgrupo31://reporte/GCHU-2026-00412` (P17) sin otra ruta.
+export default function RutaDetalleReporte() {
   const { id } = useLocalSearchParams<{ id: string }>();
-
-  return (
-    <PantallaPendiente
-      titulo="Detalle del reporte"
-      descripcion={`Estado, fotos y «Qué fue pasando» del reporte ${id}.`}
-      conVolver
-    />
-  );
+  return <PantallaDetalleReporte id={id} />;
 }
