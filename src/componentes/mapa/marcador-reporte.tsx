@@ -23,24 +23,32 @@ const bordes: Record<Reporte['estado'], string> = {
   rechazado: 'border-estado-rechazado',
 };
 
-// En Android el marcador se convierte en imagen; si se congela antes de que la fuente de Ionicons
-// pinte el glifo, queda el disco vacío. Se lo deja redibujar este tiempo y después se congela.
-const ESPERA_DIBUJO_MS = 600;
+// En Android el marcador se convierte en imagen. Si se congela antes de que la vista se acomode y
+// la fuente de Ionicons pinte el glifo, queda el pin rojo de Google o un disco vacío
+// (react-native-maps#5728). Se lo deja redibujar este tiempo después del último cambio visual o del
+// último acomodo de la vista, y recién ahí se congela.
+const ESPERA_DIBUJO_MS = 700;
 
 /**
  * Un reporte en el mapa: un color por estado (R3.1) y el ícono del tipo. Nunca dice quién lo hizo.
- * Quien lo usa le pone una `key` que cambie con el estado, el tipo y `elegido`, para que se
- * vuelva a dibujar cuando cambie algo de eso.
+ * La `key` tiene que ser el id del reporte y nada más: volver a montar el marcador crea otro
+ * nativo, que arranca con el pin rojo hasta que se le asigna la imagen. Los cambios de estado, tipo
+ * y `elegido` se redibujan acá adentro.
  */
 export function MarcadorReporte({ reporte, tipo, elegido = false, onPress }: Props) {
   const estilo = estadosReporte[reporte.estado];
   const nombre = tipo?.nombre ?? 'Reporte';
-  const [dibujando, setDibujando] = useState(true);
+
+  // Lo que se dibuja; cuando cambia, se vuelve a seguir la vista hasta que se asiente.
+  const firma = `${reporte.estado}|${tipo?.icono ?? ''}|${elegido}`;
+  const [acomodos, setAcomodos] = useState(0);
+  const [firmaDibujada, setFirmaDibujada] = useState<string | null>(null);
+  const dibujando = firmaDibujada !== firma;
 
   useEffect(() => {
-    const temporizador = setTimeout(() => setDibujando(false), ESPERA_DIBUJO_MS);
+    const temporizador = setTimeout(() => setFirmaDibujada(firma), ESPERA_DIBUJO_MS);
     return () => clearTimeout(temporizador);
-  }, []);
+  }, [firma, acomodos]);
 
   return (
     <Marker
@@ -54,6 +62,7 @@ export function MarcadorReporte({ reporte, tipo, elegido = false, onPress }: Pro
       accessibilityLabel={`${nombre}, ${reporte.direccion}, ${estilo.texto}`}
       zIndex={elegido ? 1 : 0}>
       <View
+        onLayout={() => setAcomodos((n) => n + 1)}
         className={`items-center justify-center rounded-full ${estilo.fondo} ${bordes[reporte.estado]} ${
           elegido ? 'h-14 w-14 border-4' : 'h-11 w-11 border-[3px]'
         }`}>

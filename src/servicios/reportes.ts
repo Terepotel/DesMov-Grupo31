@@ -11,8 +11,8 @@ import type {
 } from '@/tipos';
 import { distanciaEnMetros, estaEnCaja, type Caja } from '@/utilidades/geo';
 
-import { ErrorApi, pedir, USAR_MOCKS } from './api';
-import { responderLista, responderUno, usuarioIdDeLaSesionMock } from './mock';
+import { ErrorApi, pedir, pedirConEstado, USAR_MOCKS } from './api';
+import { copiar, responderLista, responderUno, usuarioIdDeLaSesionMock } from './mock';
 
 export interface FiltrosDeReportes {
   tipoId?: string;
@@ -113,6 +113,62 @@ export async function obtenerReporte(id: string): Promise<Reporte> {
     );
   }
   return (await pedir<RespuestaUno<Reporte>>(`/reportes/${encodeURIComponent(id)}`)).datos;
+}
+
+/**
+ * Por número de seguimiento (lo que trae el QR del mostrador, P17). La API lo acepta en minúsculas
+ * y con espacios; igual se manda limpio.
+ */
+export async function obtenerReportePorCodigo(codigo: string): Promise<Reporte> {
+  const limpio = codigo.trim().toUpperCase();
+  if (USAR_MOCKS) {
+    return responderUno(
+      reportesMock.find((r) => r.codigo.toUpperCase() === limpio),
+      new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404),
+    );
+  }
+  return (await pedir<RespuestaUno<Reporte>>(`/reportes/codigo/${encodeURIComponent(limpio)}`))
+    .datos;
+}
+
+// Mock de la tabla de adhesiones de la API (`reporteId|usuarioId`). El autor de un duplicado queda
+// sumado al original (D5): Martín (`rep-00420`) ya está sumado a `rep-00412`.
+const adhesionesMock = new Set<string>(['rep-00412|usr-085']);
+
+/**
+ * Sumarse a un reporte ajeno y abierto (R3.5). La API responde 201 la primera vez y 200 si ya
+ * estaba sumado; en los dos casos, con el reporte actualizado.
+ */
+export async function sumarseAReporte(
+  id: string,
+): Promise<{ reporte: Reporte; yaEstaba: boolean }> {
+  if (USAR_MOCKS) {
+    // Mismo orden de reglas que la API (DECISIONS P15): 404, propio, ya estaba, cerrado.
+    // Se trabaja sobre el del mock (no una copia): la adhesión tiene que quedar. `responderUno`
+    // aplica el escenario (`errorRed`) y el 404.
+    const reporte = reportesMock.find((r) => r.id === id);
+    const noEncontrado = new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404);
+    await responderUno(reporte, noEncontrado);
+    if (!reporte) throw noEncontrado;
+    const usuarioId = usuarioIdDeLaSesionMock();
+    if (reporte.autorId === usuarioId) {
+      throw new ErrorApi('ADHESION_A_REPORTE_PROPIO', 'Ya sos el autor de este reporte.', 422);
+    }
+    const clave = `${id}|${usuarioId}`;
+    if (adhesionesMock.has(clave)) return { reporte: copiar(reporte), yaEstaba: true };
+    if (reporte.estado === 'resuelto' || reporte.estado === 'rechazado') {
+      throw new ErrorApi('REPORTE_CERRADO', 'Ese reporte ya está cerrado.', 422);
+    }
+    adhesionesMock.add(clave);
+    reporte.adhesiones += 1;
+    return { reporte: copiar(reporte), yaEstaba: false };
+  }
+
+  const { datos, estadoHttp } = await pedirConEstado<RespuestaUno<Reporte>>(
+    `/reportes/${encodeURIComponent(id)}/adhesiones`,
+    { metodo: 'POST' },
+  );
+  return { reporte: datos.datos, yaEstaba: estadoHttp === 200 };
 }
 
 /** Los reportes del usuario de la sesión, del más nuevo al más viejo. */

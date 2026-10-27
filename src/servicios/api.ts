@@ -24,6 +24,11 @@ export class ErrorApi extends Error {
   }
 }
 
+/** Lo que se le muestra a la persona: los mensajes de `ErrorApi` están escritos para ir tal cual. */
+export function mensajeDeError(error: unknown) {
+  return error instanceof Error ? error.message : 'Algo salió mal. Probá de nuevo.';
+}
+
 let token: string | null = null;
 
 export function establecerToken(nuevo: string | null) {
@@ -43,10 +48,18 @@ interface OpcionesDePedido {
 }
 
 /** `R` es el sobre que devuelve la ruta: `RespuestaLista<T>` o `RespuestaUno<T>`. */
-export async function pedir<R>(
+export async function pedir<R>(ruta: string, opciones: OpcionesDePedido = {}): Promise<R> {
+  return (await pedirConEstado<R>(ruta, opciones)).datos;
+}
+
+/**
+ * Igual que `pedir`, pero también devuelve el status HTTP de una respuesta buena: para las rutas
+ * donde 200 y 201 dicen cosas distintas (sumarse: 201 la primera vez, 200 si ya estaba).
+ */
+export async function pedirConEstado<R>(
   ruta: string,
   { metodo = 'GET', cuerpo, consulta }: OpcionesDePedido = {},
-): Promise<R> {
+): Promise<{ datos: R; estadoHttp: number }> {
   const cabeceras: Record<string, string> = { Accept: 'application/json' };
   if (cuerpo !== undefined) cabeceras['Content-Type'] = 'application/json';
   if (token) cabeceras.Authorization = `Bearer ${token}`;
@@ -88,7 +101,7 @@ export async function pedir<R>(
     );
   }
 
-  return json as R;
+  return { datos: json as R, estadoHttp: respuesta.status };
 }
 
 function armarConsulta(consulta: Consulta = {}) {

@@ -57,6 +57,19 @@ export const estadosReporte: Record<
   },
 };
 
+/**
+ * El orden en que se listan los estados (filtros, resúmenes): «Sin enviar» primero, porque es lo
+ * único que el vecino puede tener que mirar, y después en el orden en que avanza un reporte.
+ */
+export const ORDEN_ESTADOS_VISIBLES: EstadoVisible[] = [
+  'sin_enviar',
+  'recibido',
+  'en_revision',
+  'asignado',
+  'resuelto',
+  'rechazado',
+];
+
 export function estadoVisible(reporte: { estado: Estado; sincronizado: boolean }): EstadoVisible {
   return reporte.sincronizado ? reporte.estado : 'sin_enviar';
 }

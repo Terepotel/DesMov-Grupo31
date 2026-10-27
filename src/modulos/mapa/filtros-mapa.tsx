@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 
-import { Desplegable } from '@/componentes/ui/desplegable';
+import { describirElegidos, Desplegable } from '@/componentes/ui/desplegable';
 import { DiscoTipo } from '@/componentes/ui/disco-tipo';
 import { estadosReporte } from '@/componentes/ui/estado-reporte';
 import type { EstadoReporte, TipoDeReporte } from '@/tipos';
@@ -42,19 +42,20 @@ export function FiltrosMapa({ filtros, alCambiar, tipos }: Props) {
   }
 
   const tipoElegido = tipos?.find((t) => t.id === filtros.tipoId) ?? null;
+  const opcionesDeEstado = ESTADOS_DEL_MAPA.map((estado) => ({
+    clave: estado,
+    texto: estadosReporte[estado].texto,
+    icono: estadosReporte[estado].icono,
+    claseIcono: estadosReporte[estado].claseIcono,
+  }));
 
   return (
     <View className="flex-row gap-3 px-6">
       <Desplegable
         rotulo="Estado"
-        valor={describirEstados(filtros.estados)}
+        valor={describirElegidos(opcionesDeEstado, filtros.estados)}
         multiple
-        opciones={ESTADOS_DEL_MAPA.map((estado) => ({
-          clave: estado,
-          texto: estadosReporte[estado].texto,
-          icono: estadosReporte[estado].icono,
-          claseIcono: estadosReporte[estado].claseIcono,
-        }))}
+        opciones={opcionesDeEstado}
         elegidas={filtros.estados}
         alElegir={alternarEstado}
         className="flex-1"
@@ -76,13 +77,4 @@ export function FiltrosMapa({ filtros, alCambiar, tipos }: Props) {
       />
     </View>
   );
-}
-
-/** «Todos», «Ninguno», «Recibido», «Recibido y 2 más». */
-function describirEstados(estados: EstadoReporte[]) {
-  if (estados.length === ESTADOS_DEL_MAPA.length) return 'Todos';
-  if (estados.length === 0) return 'Ninguno';
-  const [primero, ...resto] = ESTADOS_DEL_MAPA.filter((e) => estados.includes(e));
-  const texto = estadosReporte[primero].texto;
-  return resto.length === 0 ? texto : `${texto} y ${resto.length} más`;
 }

@@ -90,15 +90,19 @@ export function PantallaMapa() {
         <MapaBase
           ref={mapa}
           onRegionChangeComplete={alCambiarRegion}
-          onPress={() => setElegidoId(null)}
+          // En Android, tocar un marcador dispara también el `onPress` del mapa (con
+          // `action: 'marker-press'`): si no se lo ignora, deselecciona lo que el marcador acaba de elegir.
+          onPress={(evento) => {
+            if (evento.nativeEvent.action !== 'marker-press') setElegidoId(null);
+          }}
           showsUserLocation={mostrarMiUbicacion}>
           {reportes.map((reporte) => {
             const tipo = catalogo?.find((t) => t.id === reporte.tipoId) ?? null;
             const elegido = reporte.id === elegidoId;
             return (
               <MarcadorReporte
-                // Cambia cuando cambia lo que se dibuja: el marcador se vuelve a montar y a pintar.
-                key={`${reporte.id}-${reporte.estado}-${tipo?.id ?? ''}-${elegido}`}
+                // Sólo el id: volver a montar el marcador hace aparecer el pin rojo de Google.
+                key={reporte.id}
                 reporte={reporte}
                 tipo={tipo}
                 elegido={elegido}
