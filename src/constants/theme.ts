@@ -7,20 +7,22 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// Componentes de la plantilla de Expo (pestañas): mismos valores que `src/global.css`
+// (texto, fondo, superficie-alt, borde, texto-secundario). Lo nuevo usa clases de Tailwind.
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#10283A',
+    background: '#F5F9FC',
+    backgroundElement: '#E6F1FA',
+    backgroundSelected: '#D3DFE8',
+    textSecondary: '#4A5D6B',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#E8F1F8',
+    background: '#0C1822',
+    backgroundElement: '#1C3142',
+    backgroundSelected: '#2A3F50',
+    textSecondary: '#A6B9C8',
   },
 } as const;
 

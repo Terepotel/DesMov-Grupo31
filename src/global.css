@@ -2,6 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Paleta del design system «Reporte Ciudadano» (bandera de Gualeguaychú).
+ * Fuente: https://claude.ai/artifact/UvJjqzc26ffAa3UsJMZTVw — cada color tiene ahí su uso y su contraste.
+ * Canales RGB, para que Tailwind pueda aplicar opacidad: `bg-primario/50`.
+ */
+:root {
+  /* Bandera: identidad y decoración. Iguales en los dos temas. */
+  --color-bandera-celeste: 63 153 213;
+  --color-bandera-verde: 8 94 23;
+  --color-bandera-verde-medio: 79 134 7;
+  --color-bandera-verde-claro: 174 203 110;
+  --color-bandera-arena: 238 223 156;
+  --color-sobre-celeste: 16 40 58;
+  --color-sobre-verde: 255 255 255;
+
+  --color-fondo: 245 249 252;
+  --color-superficie: 255 255 255;
+  --color-superficie-alt: 230 241 250;
+  --color-borde: 211 223 232;
+  --color-borde-control: 111 131 148;
+  --color-texto: 16 40 58;
+  --color-texto-secundario: 74 93 107;
+  --color-primario: 31 108 166;
+  --color-sobre-primario: 255 255 255;
+  --color-foco: 31 108 166;
+
+  --color-estado-recibido: 62 84 102;
+  --color-estado-recibido-fondo: 230 237 243;
+  --color-estado-revision: 110 83 0;
+  --color-estado-revision-fondo: 248 237 194;
+  --color-estado-asignado: 24 87 138;
+  --color-estado-asignado-fondo: 220 237 250;
+  --color-estado-resuelto: 45 95 10;
+  --color-estado-resuelto-fondo: 228 240 210;
+  --color-estado-rechazado: 161 40 32;
+  --color-estado-rechazado-fondo: 252 228 225;
+  --color-peligro: 161 40 32;
+  --color-peligro-fondo: 252 228 225;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-fondo: 12 24 34;
+    --color-superficie: 21 37 50;
+    --color-superficie-alt: 28 49 66;
+    --color-borde: 42 63 80;
+    --color-borde-control: 107 127 143;
+    --color-texto: 232 241 248;
+    --color-texto-secundario: 166 185 200;
+    --color-primario: 109 181 234;
+    --color-sobre-primario: 8 36 58;
+    --color-foco: 109 181 234;
+
+    --color-estado-recibido: 195 210 222;
+    --color-estado-recibido-fondo: 34 51 63;
+    --color-estado-revision: 241 217 122;
+    --color-estado-revision-fondo: 58 48 16;
+    --color-estado-asignado: 140 198 240;
+    --color-estado-asignado-fondo: 18 50 75;
+    --color-estado-resuelto: 168 212 131;
+    --color-estado-resuelto-fondo: 30 52 18;
+    --color-estado-rechazado: 246 164 154;
+    --color-estado-rechazado-fondo: 69 21 15;
+    --color-peligro: 246 164 154;
+    --color-peligro-fondo: 69 21 15;
+  }
+}
+
 :root {
   --font-display:
     Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
