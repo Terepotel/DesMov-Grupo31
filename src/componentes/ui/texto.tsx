@@ -11,6 +11,8 @@ const variantes = {
   etiqueta: 'font-sans-bold text-etiqueta uppercase',
   rotulo: 'font-sans-bold text-rotulo',
   boton: 'font-sans-bold text-boton',
+  /** 16px negrita: insignias de estado. */
+  insignia: 'font-sans-bold text-secundario',
   codigo: 'font-mono text-codigo',
 };
 
@@ -24,8 +26,11 @@ const colores = {
   'sobre-verde': 'text-sobre-verde',
   'bandera-verde': 'text-bandera-verde',
   peligro: 'text-peligro',
+  'estado-recibido': 'text-estado-recibido',
   'estado-revision': 'text-estado-revision',
+  'estado-asignado': 'text-estado-asignado',
   'estado-resuelto': 'text-estado-resuelto',
+  'estado-rechazado': 'text-estado-rechazado',
 };
 
 export type VarianteTexto = keyof typeof variantes;
