@@ -35,7 +35,13 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-vector-icons/ionicons"
+      "@react-native-vector-icons/ionicons",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Reporte Ciudadano usa tu ubicación para marcar dónde está el problema que reportás y mostrarte qué hay cerca."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
