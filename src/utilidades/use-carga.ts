@@ -1,29 +1,36 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+
+import { mensajeDeError } from '@/servicios/api';
 
 export type Carga<T> =
   { tipo: 'cargando' } | { tipo: 'error'; mensaje: string } | { tipo: 'listo'; datos: T };
 
 /**
  * Carga datos de un servicio cada vez que la pantalla vuelve a verse. Si al volver falla, se
- * quedan los datos que ya había. `cargar` tiene que ser estable (una función de módulo).
+ * quedan los datos que ya había. `cargar` tiene que ser estable (una función de módulo, o un
+ * `useCallback` si depende de un parámetro): si cambia (otro `id` en la misma pantalla), se
+ * empieza de cero y los datos viejos no se conservan.
  */
 export function useCarga<T>(cargar: () => Promise<T>) {
   const [carga, setCarga] = useState<Carga<T>>({ tipo: 'cargando' });
   const [intento, setIntento] = useState(0);
+  const ultimoCargar = useRef(cargar);
 
   useFocusEffect(
     useCallback(() => {
       let vigente = true;
+      // Otra cosa que cargar: lo de antes ya no corresponde, ni para mostrar mientras carga.
+      const esOtra = ultimoCargar.current !== cargar;
+      ultimoCargar.current = cargar;
+      if (esOtra) setCarga({ tipo: 'cargando' });
       cargar()
         .then((datos) => vigente && setCarga({ tipo: 'listo', datos }))
         .catch((error: unknown) => {
           if (!vigente) return;
-          // Los mensajes de `ErrorApi` están escritos para mostrarse tal cual.
-          const mensaje =
-            error instanceof Error ? error.message : 'Algo salió mal. Probá de nuevo.';
+          const mensaje = mensajeDeError(error);
           setCarga((anterior) =>
-            anterior.tipo === 'listo' ? anterior : { tipo: 'error', mensaje },
+            anterior.tipo === 'listo' && !esOtra ? anterior : { tipo: 'error', mensaje },
           );
         });
       return () => {
