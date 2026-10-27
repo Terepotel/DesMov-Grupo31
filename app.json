@@ -43,6 +43,46 @@
         {
           "locationWhenInUsePermission": "Reporte Ciudadano usa tu ubicación para marcar dónde está el problema que reportás y mostrarte qué hay cerca."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Reporte Ciudadano usa la cámara para sacarle una foto al problema que reportás. Sin foto no hay reporte.",
+          "microphonePermission": "Reporte Ciudadano usa el micrófono para que grabes una nota de voz en vez de escribir.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Reporte Ciudadano accede a tus fotos para que elijas una que ya sacaste del problema.",
+          "cameraPermission": "Reporte Ciudadano usa la cámara para sacarle una foto al problema que reportás."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Reporte Ciudadano usa el micrófono para que grabes una nota de voz en vez de escribir."
+        }
+      ],
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#3F99D5"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Reporte Ciudadano usa Face ID para que el operador vuelva a entrar sin escribir la contraseña."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Reporte Ciudadano detecta si el teléfono se mueve mientras sacás la foto, para avisarte si va a salir movida."
+        }
       ]
     ],
     "experiments": {
