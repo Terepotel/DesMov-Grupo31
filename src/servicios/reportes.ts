@@ -1,6 +1,6 @@
 // Única puerta de lectura y escritura de reportes (PDF, pág. 5).
 
-import { cambiosDeEstadoMock, reportesMock } from '@/mocks';
+import { cambiosDeEstadoMock, reportesMock, usuariosMock } from '@/mocks';
 import type { CambioDeEstado, EstadoReporte, Reporte, RespuestaLista, RespuestaUno } from '@/tipos';
 
 import { ErrorApi, pedir, USAR_MOCKS } from './api';
@@ -67,4 +67,48 @@ export function obtenerCambiosDeEstado(reporteId: string): Promise<RespuestaList
     return responderLista(cambios);
   }
   return pedir(`/reportes/${encodeURIComponent(reporteId)}/cambios`);
+}
+
+export interface FiltrosDeBandeja {
+  /** Sin zona, la API usa la del operador; `'todas'` trae todas. */
+  zonaId?: string;
+  tipoId?: string;
+  estados?: EstadoReporte[];
+  pagina?: number;
+  porPagina?: number;
+}
+
+const ABIERTOS: EstadoReporte[] = ['recibido', 'en_revision', 'asignado'];
+
+/** Sólo operadores: los reportes abiertos, los más apoyados primero y, a igualdad, el más viejo. */
+export function obtenerBandeja(filtros: FiltrosDeBandeja = {}): Promise<RespuestaLista<Reporte>> {
+  const { zonaId, tipoId, estados, pagina, porPagina } = filtros;
+
+  if (USAR_MOCKS) {
+    const operador = usuariosMock.find((u) => u.id === usuarioIdDeLaSesionMock());
+    if (operador?.rol !== 'operador') {
+      return Promise.reject(
+        new ErrorApi('SIN_PERMISO', 'Esta parte es sólo para operadores.', 403),
+      );
+    }
+    const zona = zonaId ?? operador.zonaId ?? 'todas';
+    const abiertos = reportesMock.filter(
+      (r) =>
+        (estados ?? ABIERTOS).includes(r.estado) &&
+        ABIERTOS.includes(r.estado) &&
+        (zona === 'todas' || r.zonaId === zona) &&
+        (tipoId === undefined || r.tipoId === tipoId),
+    );
+    const ordenados = [...abiertos].sort(
+      (a, b) =>
+        b.adhesiones - a.adhesiones ||
+        a.creadoEn.localeCompare(b.creadoEn) ||
+        a.id.localeCompare(b.id),
+    );
+    return responderLista(ordenados, { pagina, porPagina });
+  }
+
+  return pedir('/bandeja', {
+    consulta: { zonaId, tipoId, estado: estados?.join(','), pagina, porPagina },
+  });
 }
