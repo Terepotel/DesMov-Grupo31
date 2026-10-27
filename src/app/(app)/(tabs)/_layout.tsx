@@ -7,10 +7,11 @@ import { useSesion } from '@/modulos/autenticacion/contexto';
 
 type Pestana = { nombre: string; rotulo: string; icono: NombreIcono };
 
-// El vecino tiene además el botón «Nuevo» al centro; el operador, no.
+// Los dos roles tienen cuatro pestañas y un disco destacado al centro: «Nuevo» (abre el nuevo
+// reporte) para el vecino y «QR» (la pestaña escanear) para el operador.
 const pestanasVecino: Pestana[] = [
   { nombre: 'index', rotulo: 'Inicio', icono: 'home-outline' },
-  { nombre: 'mis-reportes', rotulo: 'Mis reportes', icono: 'list-outline' },
+  { nombre: 'mis-reportes', rotulo: 'Historial', icono: 'list-outline' },
   { nombre: 'mapa', rotulo: 'Mapa', icono: 'map-outline' },
   { nombre: 'avisos', rotulo: 'Avisos', icono: 'notifications-outline' },
 ];
@@ -18,7 +19,6 @@ const pestanasVecino: Pestana[] = [
 const pestanasOperador: Pestana[] = [
   { nombre: 'index', rotulo: 'Bandeja', icono: 'file-tray-full-outline' },
   { nombre: 'mapa', rotulo: 'Mapa', icono: 'map-outline' },
-  { nombre: 'escanear', rotulo: 'Escanear', icono: 'qr-code-outline' },
   { nombre: 'cuadrillas', rotulo: 'Cuadrillas', icono: 'people-outline' },
   { nombre: 'cuenta', rotulo: 'Cuenta', icono: 'person-circle-outline' },
 ];
@@ -75,10 +75,26 @@ function Barra({
     };
   });
 
+  const escanear = state.routes.find((r) => r.name === 'escanear');
+
   return (
     <BarraInferior
       items={items}
-      alTocarNuevo={esOperador ? undefined : () => router.push('/nuevo-reporte')}
+      destacado={
+        esOperador
+          ? {
+              rotulo: 'QR',
+              icono: 'qr-code-outline',
+              nombre: 'Escanear un QR',
+              alTocar: () => escanear && navigation.navigate(escanear.name, escanear.params),
+            }
+          : {
+              rotulo: 'Nuevo',
+              icono: 'add',
+              nombre: 'Nuevo reporte',
+              alTocar: () => router.push('/nuevo-reporte'),
+            }
+      }
       margenInferior={insets.bottom}
     />
   );
