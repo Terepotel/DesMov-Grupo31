@@ -1,17 +1,17 @@
-import type { Reporte, RespuestaError, RespuestaExitosa } from '../tipos'
+import type { Reporte, RespuestaError, RespuestaLista } from '../tipos';
 
-export const listaVaciaMock: RespuestaExitosa<Reporte> = {
+export const listaVaciaMock: RespuestaLista<Reporte> = {
   datos: [],
   meta: { total: 0, pagina: 1, porPagina: 20 },
-}
+};
 
 export const errorDeRedMock: RespuestaError = {
   error: {
     codigo: 'ERROR_RED',
-    mensaje: 'No se pudo conectar. Intente nuevamente cuando vuelva la conexión.',
+    mensaje: 'No pudimos conectarnos. Revisá tu conexión a internet y probá de nuevo.',
   },
-}
+};
 
 export const errorFotoRequeridaMock: RespuestaError = {
   error: { codigo: 'FOTO_REQUERIDA', mensaje: 'El reporte necesita al menos una foto.' },
-}
+};

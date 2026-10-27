@@ -1,4 +1,4 @@
-import type { Cuadrilla, TipoDeReporte, Usuario, Zona } from '../tipos'
+import type { Cuadrilla, TipoDeReporte, Usuario, Zona } from '../tipos';
 
 export const tiposDeReporteMock: TipoDeReporte[] = [
   {
@@ -57,7 +57,7 @@ export const tiposDeReporteMock: TipoDeReporte[] = [
     color: '#6750A4',
     areaResponsable: 'Atención al Vecino',
   },
-]
+];
 
 export const zonasMock: Zona[] = [
   {
@@ -108,13 +108,13 @@ export const zonasMock: Zona[] = [
       { latitud: -32.99, longitud: -58.56 },
     ],
   },
-]
+];
 
 export const usuariosMock: Usuario[] = [
   {
     id: 'usr-084',
     nombre: 'Norma Pereyra',
-    email: 'norma@example.com',
+    email: 'norma@mail.com',
     telefono: '3446-412233',
     rol: 'vecino',
     zonaId: null,
@@ -124,7 +124,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 'usr-085',
     nombre: 'Martín Díaz',
-    email: 'martin@example.com',
+    email: 'martin@demo.ar',
     telefono: null,
     rol: 'vecino',
     zonaId: null,
@@ -134,26 +134,24 @@ export const usuariosMock: Usuario[] = [
   {
     id: 'usr-086',
     nombre: 'Ana López',
-    email: 'ana@example.com',
+    email: 'ana@demo.ar',
     telefono: null,
     rol: 'vecino',
     zonaId: null,
     avisosActivos: true,
     creadoEn: '2026-09-02T09:00:00-03:00',
   },
-  ...zonasMock.map(
-    (zona, index): Usuario => ({
-      id: `usr-00${index + 3}`,
-      nombre: `Operador ${zona.nombre}`,
-      email: `operador${index + 3}@example.com`,
-      telefono: null,
-      rol: 'operador',
-      zonaId: zona.id,
-      avisosActivos: true,
-      creadoEn: '2026-08-01T08:00:00-03:00',
-    })
-  ),
-]
+  ...zonasMock.map((zona, index): Usuario => ({
+    id: `usr-00${index + 3}`,
+    nombre: `Operador ${zona.nombre}`,
+    email: `operador.${zona.id.replace('zon-', '')}@demo.ar`,
+    telefono: null,
+    rol: 'operador',
+    zonaId: zona.id,
+    avisosActivos: true,
+    creadoEn: '2026-08-01T08:00:00-03:00',
+  })),
+];
 
 export const cuadrillasMock: Cuadrilla[] = [
   {
@@ -191,4 +189,4 @@ export const cuadrillasMock: Cuadrilla[] = [
     especialidad: 'mantenimiento',
     activa: false,
   },
-]
+];
