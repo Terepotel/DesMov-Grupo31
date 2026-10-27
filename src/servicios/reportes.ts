@@ -1,7 +1,15 @@
 // Única puerta de lectura y escritura de reportes (PDF, pág. 5).
 
 import { cambiosDeEstadoMock, reportesMock, usuariosMock } from '@/mocks';
-import type { CambioDeEstado, EstadoReporte, Reporte, RespuestaLista, RespuestaUno } from '@/tipos';
+import type {
+  CambioDeEstado,
+  Coordenadas,
+  EstadoReporte,
+  Reporte,
+  RespuestaLista,
+  RespuestaUno,
+} from '@/tipos';
+import { distanciaEnMetros, estaEnCaja, type Caja } from '@/utilidades/geo';
 
 import { ErrorApi, pedir, USAR_MOCKS } from './api';
 import { responderLista, responderUno, usuarioIdDeLaSesionMock } from './mock';
@@ -11,6 +19,10 @@ export interface FiltrosDeReportes {
   zonaId?: string;
   /** Sin estados, la API no trae los rechazados. */
   estados?: EstadoReporte[];
+  /** Sólo lo que se ve en el mapa. */
+  caja?: Caja;
+  /** Alrededor de un punto; `radioMetros` de 1 a 50 000. Se puede combinar con `caja`. */
+  cerca?: { coordenadas: Coordenadas; radioMetros: number };
   pagina?: number;
   porPagina?: number;
 }
@@ -19,20 +31,77 @@ const masNuevoPrimero = (a: Reporte, b: Reporte) => b.creadoEn.localeCompare(a.c
 
 /** Los reportes públicos de la ciudad (el mapa). */
 export function obtenerReportes(filtros: FiltrosDeReportes = {}): Promise<RespuestaLista<Reporte>> {
-  const { tipoId, zonaId, estados, pagina, porPagina } = filtros;
+  const { tipoId, zonaId, estados, caja, cerca, pagina, porPagina } = filtros;
 
   if (USAR_MOCKS) {
     const filtrados = reportesMock.filter(
       (r) =>
         (tipoId === undefined || r.tipoId === tipoId) &&
         (zonaId === undefined || r.zonaId === zonaId) &&
-        (estados ? estados.includes(r.estado) : r.estado !== 'rechazado'),
+        (estados ? estados.includes(r.estado) : r.estado !== 'rechazado') &&
+        (caja === undefined || estaEnCaja(r.coordenadas, caja)) &&
+        (cerca === undefined ||
+          distanciaEnMetros(cerca.coordenadas, r.coordenadas) <= cerca.radioMetros),
     );
-    return responderLista([...filtrados].sort(masNuevoPrimero), { pagina, porPagina });
+    // Con radio, la API ordena del más cercano al más lejano (DECISIONS P12).
+    const ordenados = cerca
+      ? [...filtrados].sort(
+          (a, b) =>
+            distanciaEnMetros(cerca.coordenadas, a.coordenadas) -
+            distanciaEnMetros(cerca.coordenadas, b.coordenadas),
+        )
+      : [...filtrados].sort(masNuevoPrimero);
+    return responderLista(ordenados, { pagina, porPagina });
   }
 
   return pedir('/reportes', {
-    consulta: { tipoId, zonaId, estado: estados?.join(','), pagina, porPagina },
+    consulta: {
+      tipoId,
+      zonaId,
+      estado: estados?.join(','),
+      ...caja,
+      latitud: cerca?.coordenadas.latitud,
+      longitud: cerca?.coordenadas.longitud,
+      radioMetros: cerca?.radioMetros,
+      pagina,
+      porPagina,
+    },
+  });
+}
+
+const ABIERTOS: EstadoReporte[] = ['recibido', 'en_revision', 'asignado'];
+
+/** Radio con el que la API busca duplicados si no se le pide otro (R3.4). */
+export const RADIO_CERCANOS_M = 50;
+
+/**
+ * Antes de crear uno: los reportes abiertos a menos de `radioMetros` (50 por defecto, 200 como
+ * máximo), del más cercano al más lejano, sin los marcados como duplicado (API R9).
+ */
+export function obtenerReportesCercanos(
+  coordenadas: Coordenadas,
+  { tipoId, radioMetros }: { tipoId?: string; radioMetros?: number } = {},
+): Promise<RespuestaLista<Reporte>> {
+  if (USAR_MOCKS) {
+    const radio = radioMetros ?? RADIO_CERCANOS_M;
+    const cercanos = reportesMock
+      .filter(
+        (r) =>
+          ABIERTOS.includes(r.estado) &&
+          r.duplicadoDe === null &&
+          (tipoId === undefined || r.tipoId === tipoId) &&
+          distanciaEnMetros(coordenadas, r.coordenadas) <= radio,
+      )
+      .sort(
+        (a, b) =>
+          distanciaEnMetros(coordenadas, a.coordenadas) -
+          distanciaEnMetros(coordenadas, b.coordenadas),
+      );
+    return responderLista(cercanos);
+  }
+
+  return pedir('/reportes/cercanos', {
+    consulta: { latitud: coordenadas.latitud, longitud: coordenadas.longitud, tipoId, radioMetros },
   });
 }
 
@@ -77,8 +146,6 @@ export interface FiltrosDeBandeja {
   pagina?: number;
   porPagina?: number;
 }
-
-const ABIERTOS: EstadoReporte[] = ['recibido', 'en_revision', 'asignado'];
 
 /** Sólo operadores: los reportes abiertos, los más apoyados primero y, a igualdad, el más viejo. */
 export function obtenerBandeja(filtros: FiltrosDeBandeja = {}): Promise<RespuestaLista<Reporte>> {
