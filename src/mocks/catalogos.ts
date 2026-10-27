@@ -114,7 +114,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 'usr-084',
     nombre: 'Norma Pereyra',
-    email: 'norma@example.com',
+    email: 'norma@mail.com',
     telefono: '3446-412233',
     rol: 'vecino',
     zonaId: null,
@@ -124,7 +124,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 'usr-085',
     nombre: 'Martín Díaz',
-    email: 'martin@example.com',
+    email: 'martin@demo.ar',
     telefono: null,
     rol: 'vecino',
     zonaId: null,
@@ -134,7 +134,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 'usr-086',
     nombre: 'Ana López',
-    email: 'ana@example.com',
+    email: 'ana@demo.ar',
     telefono: null,
     rol: 'vecino',
     zonaId: null,
@@ -144,7 +144,7 @@ export const usuariosMock: Usuario[] = [
   ...zonasMock.map((zona, index): Usuario => ({
     id: `usr-00${index + 3}`,
     nombre: `Operador ${zona.nombre}`,
-    email: `operador${index + 3}@example.com`,
+    email: `operador.${zona.id.replace('zon-', '')}@demo.ar`,
     telefono: null,
     rol: 'operador',
     zonaId: zona.id,

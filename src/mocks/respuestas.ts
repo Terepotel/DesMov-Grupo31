@@ -8,7 +8,7 @@ export const listaVaciaMock: RespuestaExitosa<Reporte> = {
 export const errorDeRedMock: RespuestaError = {
   error: {
     codigo: 'ERROR_RED',
-    mensaje: 'No se pudo conectar. Intente nuevamente cuando vuelva la conexión.',
+    mensaje: 'No pudimos conectarnos. Revisá tu conexión a internet y probá de nuevo.',
   },
 };
 

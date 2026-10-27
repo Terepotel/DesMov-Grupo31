@@ -9,6 +9,6 @@ export type LoginAccount = {
 
 export const loginAccounts: LoginAccount[] = usuariosMock.map((usuario) => ({
   email: usuario.email,
-  password: 'test123',
+  password: 'demo1234',
   usuario,
 }));
