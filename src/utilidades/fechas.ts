@@ -6,3 +6,9 @@ export function formatearFecha(iso: string) {
   const [anio, mes, dia] = iso.slice(0, 10).split('-');
   return `${dia}/${mes}/${anio}`;
 }
+
+/** `2026-09-18T09:20:00-03:00` → `18/09 · 09:20` (el año ya lo dice el número de seguimiento). */
+export function formatearFechaHora(iso: string) {
+  const [, mes, dia] = iso.slice(0, 10).split('-');
+  return `${dia}/${mes} · ${iso.slice(11, 16)}`;
+}
