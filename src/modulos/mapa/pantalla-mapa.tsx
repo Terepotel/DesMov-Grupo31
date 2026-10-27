@@ -90,7 +90,11 @@ export function PantallaMapa() {
         <MapaBase
           ref={mapa}
           onRegionChangeComplete={alCambiarRegion}
-          onPress={() => setElegidoId(null)}
+          // En Android, tocar un marcador dispara también el `onPress` del mapa (con
+          // `action: 'marker-press'`): si no se lo ignora, deselecciona lo que el marcador acaba de elegir.
+          onPress={(evento) => {
+            if (evento.nativeEvent.action !== 'marker-press') setElegidoId(null);
+          }}
           showsUserLocation={mostrarMiUbicacion}>
           {reportes.map((reporte) => {
             const tipo = catalogo?.find((t) => t.id === reporte.tipoId) ?? null;
