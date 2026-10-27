@@ -1,7 +1,7 @@
-import type { CambioDeEstado, Foto, Reporte } from '../tipos'
+import type { CambioDeEstado, Foto, Reporte } from '../tipos';
 
 function foto(id: string, momento: Foto['momento'] = 'problema'): Foto {
-  return { id, url: `https://media.example.invalid/${id}.jpg`, momento }
+  return { id, url: `https://media.example.invalid/${id}.jpg`, momento };
 }
 
 function reporte(numero: string, campos: Partial<Reporte>): Reporte {
@@ -23,11 +23,11 @@ function reporte(numero: string, campos: Partial<Reporte>): Reporte {
     creadoEn: '2026-09-14T10:22:00-03:00',
     sincronizado: true,
     ...campos,
-  }
+  };
 }
 
 export const motivoRechazoMock =
-  'La inspección constató que el daño está dentro de un terreno privado y no corresponde a la vía pública. La cuadrilla municipal no puede intervenir sin la autorización del propietario. Por favor, comuníquese con el Centro de Atención al Vecino para recibir orientación sobre el trámite correspondiente y presentar la documentación necesaria. Este rechazo no implica que el problema haya sido reparado.'
+  'La inspección constató que el daño está dentro de un terreno privado y no corresponde a la vía pública. La cuadrilla municipal no puede intervenir sin la autorización del propietario. Por favor, comuníquese con el Centro de Atención al Vecino para recibir orientación sobre el trámite correspondiente y presentar la documentación necesaria. Este rechazo no implica que el problema haya sido reparado.';
 
 export const reportesMock: Reporte[] = [
   reporte('00412', {
@@ -111,7 +111,7 @@ export const reportesMock: Reporte[] = [
     autorId: 'usr-085',
     creadoEn: '2026-09-22T09:00:00-03:00',
   }),
-]
+];
 
 function cambio(
   reporteId: string,
@@ -119,9 +119,9 @@ function cambio(
   estado: CambioDeEstado['estado'],
   fechaHora: string,
   comentario: string | null,
-  operadorId: string | null
+  operadorId: string | null,
 ): CambioDeEstado {
-  return { id: `cam-${reporteId}-${numero}`, reporteId, estado, fechaHora, comentario, operadorId }
+  return { id: `cam-${reporteId}-${numero}`, reporteId, estado, fechaHora, comentario, operadorId };
 }
 
 export const cambiosDeEstadoMock: CambioDeEstado[] = [
@@ -132,7 +132,7 @@ export const cambiosDeEstadoMock: CambioDeEstado[] = [
     'en_revision',
     '2026-09-15T08:40:00-03:00',
     'Verificado en el lugar',
-    'usr-003'
+    'usr-003',
   ),
   cambio(
     'rep-00412',
@@ -140,7 +140,7 @@ export const cambiosDeEstadoMock: CambioDeEstado[] = [
     'asignado',
     '2026-09-18T08:00:00-03:00',
     'Asignado a Cuadrilla 2 — Bacheo',
-    'usr-003'
+    'usr-003',
   ),
   cambio(
     'rep-00413',
@@ -148,7 +148,7 @@ export const cambiosDeEstadoMock: CambioDeEstado[] = [
     'en_revision',
     '2026-09-16T08:00:00-03:00',
     'Verificada la luminaria',
-    'usr-004'
+    'usr-004',
   ),
   cambio(
     'rep-00413',
@@ -156,7 +156,7 @@ export const cambiosDeEstadoMock: CambioDeEstado[] = [
     'asignado',
     '2026-09-17T08:00:00-03:00',
     'Asignado a Cuadrilla 3 — Alumbrado',
-    'usr-004'
+    'usr-004',
   ),
   cambio(
     'rep-00413',
@@ -164,7 +164,7 @@ export const cambiosDeEstadoMock: CambioDeEstado[] = [
     'en_revision',
     '2026-09-18T08:00:00-03:00',
     'Se requiere revisar también el cableado antes de completar el arreglo',
-    'usr-004'
+    'usr-004',
   ),
   cambio(
     'rep-00413',
@@ -172,7 +172,7 @@ export const cambiosDeEstadoMock: CambioDeEstado[] = [
     'resuelto',
     '2026-09-19T08:00:00-03:00',
     'Luminaria y cableado reparados; foto adjunta',
-    'usr-004'
+    'usr-004',
   ),
   cambio(
     'rep-00414',
@@ -180,7 +180,7 @@ export const cambiosDeEstadoMock: CambioDeEstado[] = [
     'en_revision',
     '2026-09-17T08:00:00-03:00',
     'Inspección de residuos pendiente',
-    'usr-005'
+    'usr-005',
   ),
   cambio('rep-00416', 2, 'rechazado', '2026-09-19T10:00:00-03:00', motivoRechazoMock, 'usr-004'),
-]
+];
