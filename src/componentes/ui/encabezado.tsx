@@ -33,29 +33,31 @@ export function Encabezado({ tono, margenSuperior = 0, className, children }: Pr
         style={{ paddingTop: 24 + margenSuperior }}>
         {children}
       </View>
-      <Ola conLomaOscura={tono === 'celeste'} />
+      <Ola className="absolute bottom-0 left-0 right-0" />
     </View>
   );
 }
 
+type PropsOla = {
+  alto?: number;
+  className?: string;
+};
+
 /** Las lomas y la franja arena de la bandera. Decorativa: no lleva texto encima. */
-function Ola({ conLomaOscura }: { conLomaOscura: boolean }) {
+export function Ola({ alto = 56, className }: PropsOla) {
   return (
     <View
-      className="absolute bottom-0 left-0 right-0 h-14"
+      className={className}
+      style={{ height: alto }}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
       <Svg width="100%" height="100%" viewBox="0 0 400 56" preserveAspectRatio="none">
         <Path fill={bandera.verdeClaro} d="M0 30C60 10 140 12 210 34L210 56H0Z" />
-        {conLomaOscura && <Path fill={bandera.verde} d="M110 56C200 28 300 4 400 12V56Z" />}
+        <Path fill={bandera.verde} d="M110 56C200 28 300 4 400 12V56Z" />
         <Path fill={bandera.arena} d="M0 42C90 30 210 36 310 56H0Z" />
         <Path
           fill={bandera.verdeMedio}
-          d={
-            conLomaOscura
-              ? 'M0 46C20 48 40 52 56 56H0ZM270 56C320 46 370 42 400 45V56Z'
-              : 'M0 46C20 48 40 52 56 56H0ZM200 56C280 36 350 30 400 34V56Z'
-          }
+          d={'M0 46C20 48 40 52 56 56H0ZM270 56C320 46 370 42 400 45V56Z'}
         />
       </Svg>
     </View>
