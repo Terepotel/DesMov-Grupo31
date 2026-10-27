@@ -104,8 +104,10 @@ export const reportesMock: Reporte[] = [
     coordenadas: { latitud: -33.0095, longitud: -58.515 },
     creadoEn: '2026-09-21T15:00:00-03:00',
   }),
+  // Un duplicado queda rechazado y su autor, sumado al original (API D5, consignas P4).
   reporte('00420', {
     descripcion: 'El mismo pozo frente a Rocamora 1240.',
+    estado: 'rechazado',
     duplicadoDe: 'rep-00412',
     coordenadas: { latitud: -33.00895, longitud: -58.51425 },
     autorId: 'usr-085',
@@ -183,4 +185,12 @@ export const cambiosDeEstadoMock: CambioDeEstado[] = [
     'usr-005',
   ),
   cambio('rep-00416', 2, 'rechazado', '2026-09-19T10:00:00-03:00', motivoRechazoMock, 'usr-004'),
+  cambio(
+    'rep-00420',
+    2,
+    'rechazado',
+    '2026-09-22T11:30:00-03:00',
+    'Duplicado de GCHU-2026-00412',
+    'usr-003',
+  ),
 ];
