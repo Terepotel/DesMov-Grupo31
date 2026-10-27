@@ -10,6 +10,8 @@ const variantes = {
   secundario: 'font-sans text-secundario',
   etiqueta: 'font-sans-bold text-etiqueta uppercase',
   rotulo: 'font-sans-bold text-rotulo',
+  /** 12px negrita: sólo los rótulos de la barra inferior. */
+  'rotulo-barra': 'font-sans-bold text-rotulo-barra',
   boton: 'font-sans-bold text-boton',
   /** 16px negrita: insignias de estado. */
   insignia: 'font-sans-bold text-secundario',

@@ -12,18 +12,26 @@ export type ItemBarra = {
   alTocar: () => void;
 };
 
+export type ItemDestacado = {
+  rotulo: string;
+  icono: NombreIcono;
+  /** Nombre completo para el lector de pantalla: «Nuevo reporte», «Escanear un QR». */
+  nombre: string;
+  alTocar: () => void;
+};
+
 type Props = {
   items: ItemBarra[];
-  /** Sólo el vecino: el disco «Nuevo» al centro. */
-  alTocarNuevo?: () => void;
+  /** El disco levantado al centro: «Nuevo» para el vecino, «Escanear» para el operador. */
+  destacado?: ItemDestacado;
   /** Área segura inferior del teléfono. */
   margenInferior: number;
 };
 
 /** La navegación principal. Los rótulos no se ocultan nunca. */
-export function BarraInferior({ items, alTocarNuevo, margenInferior }: Props) {
+export function BarraInferior({ items, destacado, margenInferior }: Props) {
   const mitad = Math.ceil(items.length / 2);
-  const conNuevo = alTocarNuevo ? [...items.slice(0, mitad), null, ...items.slice(mitad)] : items;
+  const conNuevo = destacado ? [...items.slice(0, mitad), null, ...items.slice(mitad)] : items;
 
   return (
     <View
@@ -45,21 +53,21 @@ export function BarraInferior({ items, alTocarNuevo, margenInferior }: Props) {
               className={item.activa ? 'text-primario' : 'text-texto-secundario'}
             />
             <Texto
-              variante="rotulo"
+              variante="rotulo-barra"
               color={item.activa ? 'primario' : 'texto-secundario'}
               className="text-center">
               {item.rotulo}
             </Texto>
           </Pressable>
         ) : (
-          <BotonNuevo key="nuevo" alTocar={alTocarNuevo!} />
+          <BotonDestacado key="destacado" {...destacado!} />
         ),
       )}
     </View>
   );
 }
 
-function BotonNuevo({ alTocar }: { alTocar: () => void }) {
+function BotonDestacado({ rotulo, icono, nombre, alTocar }: ItemDestacado) {
   const sombra = useSombra('flotante');
 
   return (
@@ -67,15 +75,15 @@ function BotonNuevo({ alTocar }: { alTocar: () => void }) {
       onPress={alTocar}
       className="flex-1 items-center gap-1 px-1 pb-2 active:opacity-70"
       accessibilityRole="button"
-      accessibilityLabel="Nuevo reporte">
+      accessibilityLabel={nombre}>
       {/* Levantado 32px sobre la barra. */}
       <View
         className="-mt-8 h-16 w-16 items-center justify-center rounded-full bg-primario"
         style={sombra}>
-        <Icono nombre="add" tamano={36} className="text-sobre-primario" />
+        <Icono nombre={icono} tamano={36} className="text-sobre-primario" />
       </View>
-      <Texto variante="rotulo" color="texto-secundario" className="text-center">
-        Nuevo
+      <Texto variante="rotulo-barra" color="texto-secundario" className="text-center">
+        {rotulo}
       </Texto>
     </Pressable>
   );

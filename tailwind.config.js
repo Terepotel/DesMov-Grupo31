@@ -57,6 +57,8 @@ module.exports = {
         secundario: ['16px', { lineHeight: '24px' }],
         etiqueta: ['14px', { lineHeight: '20px', letterSpacing: '1.12px' }],
         rotulo: ['14px', { lineHeight: '18px' }],
+        // Sólo la barra inferior: por debajo del mínimo del DS (14), a pedido del equipo.
+        'rotulo-barra': ['12px', { lineHeight: '16px' }],
         boton: ['20px', { lineHeight: '28px' }],
         campo: '20px',
         codigo: ['24px', { lineHeight: '30px' }],

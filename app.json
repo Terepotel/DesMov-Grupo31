@@ -8,9 +8,11 @@
     "scheme": "desmovgrupo31",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.grupo31.reporteciudadano",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.grupo31.reporteciudadano",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -35,11 +37,24 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-vector-icons/ionicons"
+      "@react-native-vector-icons/ionicons",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Reporte Ciudadano usa tu ubicación para marcar dónde está el problema que reportás y mostrarte qué hay cerca."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "070af8d5-ffb7-4c9d-b5c4-0fe234ba3697"
+      }
+    },
+    "owner": "yangcr"
   }
 }
