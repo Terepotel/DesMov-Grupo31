@@ -21,12 +21,14 @@ import { useCarga } from '@/utilidades/use-carga';
 
 import { limpiarFotosDelReporte, useFotosDelReporte } from './fotos-del-reporte';
 import { ReporteEnviado } from './reporte-enviado';
+import { revisarUbicacion } from './revisar-ubicacion';
 import { SeccionFoto } from './seccion-foto';
 import { SeccionUbicacion } from './seccion-ubicacion';
 import {
   limpiarUbicacionDelReporte,
   tomarUbicacionDelGps,
   useUbicacionDelReporte,
+  type UbicacionDelReporte,
 } from './ubicacion-del-reporte';
 import {
   CAMPOS,
@@ -34,6 +36,7 @@ import {
   resumirErrores,
   validarReporte,
   type CampoDelReporte,
+  type ErroresDelReporte,
 } from './validar';
 
 const cargarTipos = async () => (await obtenerTiposDeReporte()).datos;
@@ -57,6 +60,10 @@ export function PantallaNuevoReporte() {
   const [enviando, setEnviando] = useState(false);
   const [errorDeEnvio, setErrorDeEnvio] = useState<string | null>(null);
   const [enviado, setEnviado] = useState<Reporte | null>(null);
+  const [lugarRevisado, setLugarRevisado] = useState<{
+    para: UbicacionDelReporte;
+    error: string;
+  } | null>(null);
 
   const scroll = useRef<ScrollView>(null);
   const posiciones = useRef<Partial<Record<CampoDelReporte, number>>>({});
@@ -68,39 +75,53 @@ export function PantallaNuevoReporte() {
     void tomarUbicacionDelGps();
   }, []);
 
-  const errores = validarReporte({
+  const faltantes = validarReporte({
     tipoId,
     fotos,
     coordenadas: ubicacion.coordenadas,
+    direccionEscrita: ubicacion.direccionEscrita ?? '',
     descripcion,
   });
+  // El error de la revisión vale mientras la ubicación siga igual: al tocarla, se va.
+  const errorDelLugar = lugarRevisado?.para === ubicacion ? lugarRevisado.error : null;
+  const errores = errorDelLugar ? { ...faltantes, ubicacion: errorDelLugar } : faltantes;
   const visibles = mostrarErrores ? errores : {};
   const resumen = mostrarErrores ? resumirErrores(errores) : null;
+
+  function llevarAlPrimerError(todos: ErroresDelReporte) {
+    const primero = CAMPOS.find((campo) => todos[campo]);
+    if (!primero) return false;
+    // `onLayout` da la posición dentro del contenedor, que empieza después del margen de arriba.
+    const y = (posiciones.current[primero] ?? 0) + margenes.top + 8 - 16;
+    scroll.current?.scrollTo({ y: Math.max(0, y) });
+    const texto = resumirErrores(todos);
+    if (texto) AccessibilityInfo.announceForAccessibility(texto);
+    return true;
+  }
 
   async function enviar() {
     setMostrarErrores(true);
     setErrorDeEnvio(null);
-    const primero = CAMPOS.find((campo) => errores[campo]);
-    if (primero) {
-      // `onLayout` da la posición dentro del contenedor, que empieza después del margen de arriba.
-      const y = (posiciones.current[primero] ?? 0) + margenes.top + 8 - 16;
-      scroll.current?.scrollTo({ y: Math.max(0, y) });
-      const texto = resumirErrores(errores);
-      if (texto) AccessibilityInfo.announceForAccessibility(texto);
-      return;
-    }
-    // Ya validado: ni el tipo ni la ubicación son `null`.
-    const coordenadas = ubicacion.coordenadas as Coordenadas;
+    const escrita = (ubicacion.direccionEscrita ?? '').trim();
 
     setEnviando(true);
     try {
+      // Además de lo que falta, si la calle existe y el lugar queda en la ciudad: todo en un solo
+      // aviso. Sin punto, la API igual pide coordenadas: salen de la calle escrita (P3).
+      const lugar = await revisarUbicacion(ubicacion.coordenadas, escrita);
+      setLugarRevisado(lugar.error ? { para: ubicacion, error: lugar.error } : null);
+      if (llevarAlPrimerError(lugar.error ? { ...faltantes, ubicacion: lugar.error } : faltantes)) {
+        return;
+      }
+      // Ya validado: ni el tipo ni el punto son `null`.
+      const coordenadas = lugar.coordenadas as Coordenadas;
       const reporte = await crearReporte({
         id,
         tipoId: tipoId as string,
         descripcion: descripcion.trim(),
         fotos,
         coordenadas,
-        direccion: await direccionParaEnviar(ubicacion.direccion, coordenadas),
+        direccion: escrita || (await direccionParaEnviar(ubicacion.direccion, coordenadas)),
         creadoEn: ahoraIso(),
       });
       // R1.9: la confirmación es táctil antes que visual.
@@ -201,7 +222,7 @@ export function PantallaNuevoReporte() {
         </Seccion>
 
         <View className="gap-3">
-          {resumen && <Aviso tono="error" titulo="Falta completar el reporte." detalle={resumen} />}
+          {resumen && <Aviso tono="error" titulo="Todavía no se puede enviar." detalle={resumen} />}
           {errorDeEnvio && <Aviso tono="error" titulo={errorDeEnvio} />}
           <Boton
             texto={errorDeEnvio ? 'Probar de nuevo' : 'Enviar reporte'}

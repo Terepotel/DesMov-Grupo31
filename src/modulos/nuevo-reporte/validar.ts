@@ -11,6 +11,8 @@ export interface CamposDelReporte {
   tipoId: string | null;
   fotos: FotoElegida[];
   coordenadas: Coordenadas | null;
+  /** Sin punto, la calle escrita alcanza: las coordenadas se buscan al enviar (P3). */
+  direccionEscrita: string;
   descripcion: string;
 }
 
@@ -28,7 +30,9 @@ export function validarReporte(campos: CamposDelReporte): ErroresDelReporte {
   if (campos.fotos.length === 0) {
     errores.foto = 'Sacale una foto al problema o elegí una de la galería.';
   }
-  if (!campos.coordenadas) errores.ubicacion = 'Marcá en el mapa dónde está el problema.';
+  if (!campos.coordenadas && campos.direccionEscrita.trim() === '') {
+    errores.ubicacion = 'Marcá en el mapa dónde está el problema o escribí la dirección.';
+  }
   // Sin nota de voz todavía (R1.5), el texto es lo único que cuenta qué pasa: es obligatorio (P15).
   const descripcion = campos.descripcion.trim();
   if (descripcion === '') errores.descripcion = 'Contanos en pocas palabras qué pasa.';

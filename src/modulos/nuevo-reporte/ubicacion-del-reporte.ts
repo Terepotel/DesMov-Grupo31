@@ -16,6 +16,12 @@ export interface UbicacionDelReporte {
   origen: 'gps' | 'manual' | null;
   /** Qué pasó al pedir el GPS, para que el formulario diga qué hacer. */
   gps: 'pendiente' | 'buscando' | 'ok' | 'sin_permiso' | 'no_disponible';
+  /**
+   * Lo que escribió el vecino en el campo de la dirección (P3); `null` si no lo tocó y se muestra la
+   * calculada. Sin punto, alcanza para reportar: las coordenadas se buscan al enviar. Con punto, es
+   * la dirección que va, antes que la calculada.
+   */
+  direccionEscrita: string | null;
 }
 
 const VACIA: UbicacionDelReporte = {
@@ -23,6 +29,7 @@ const VACIA: UbicacionDelReporte = {
   direccion: null,
   origen: null,
   gps: 'pendiente',
+  direccionEscrita: null,
 };
 
 let actual: UbicacionDelReporte = VACIA;
@@ -48,11 +55,18 @@ export function limpiarUbicacionDelReporte() {
   oyentes.forEach((oyente) => oyente());
 }
 
-/** El punto que eligió el vecino en el mapa. Calcula la dirección si hay señal. */
+/**
+ * El punto que eligió el vecino en el mapa. Calcula la dirección si hay señal; lo que había escrito
+ * se deja de usar, porque el punto nuevo es lo último que eligió.
+ */
 export async function elegirUbicacionAMano(coordenadas: Coordenadas) {
-  emitir({ coordenadas, origen: 'manual', direccion: null });
+  emitir({ coordenadas, origen: 'manual', direccion: null, direccionEscrita: null });
   const direccion = await direccionDesdeCoordenadas(coordenadas);
   if (actual.coordenadas === coordenadas) emitir({ direccion });
+}
+
+export function escribirDireccion(direccionEscrita: string) {
+  emitir({ direccionEscrita });
 }
 
 /** R1.4: la ubicación sale sola del GPS. Si falla, queda registrado por qué y el vecino la pone a mano. */
