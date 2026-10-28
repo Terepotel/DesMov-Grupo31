@@ -1,13 +1,11 @@
 import { useCallback, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
+import { OpcionReporteCercano } from '@/componentes/opcion-reporte-cercano';
 import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { CampoTexto } from '@/componentes/ui/campo-texto';
-import { DiscoTipo } from '@/componentes/ui/disco-tipo';
-import { EstadoReporte as InsigniaEstado } from '@/componentes/ui/estado-reporte';
 import { HojaInferior } from '@/componentes/ui/hoja-inferior';
-import { Icono } from '@/componentes/ui/icono';
 import { TarjetaReporteCargando } from '@/componentes/ui/tarjeta-reporte';
 import { Texto } from '@/componentes/ui/texto';
 import { ErrorApi, mensajeDeError } from '@/servicios/api';
@@ -19,8 +17,7 @@ import {
   RADIO_ORIGINALES_M,
 } from '@/servicios/reportes';
 import type { Reporte, TipoDeReporte } from '@/tipos';
-import { distanciaEnMetros } from '@/utilidades/geo';
-import { esCodigoDeSeguimiento, textoAdhesiones } from '@/utilidades/reportes';
+import { esCodigoDeSeguimiento } from '@/utilidades/reportes';
 import { useCarga } from '@/utilidades/use-carga';
 
 type Props = {
@@ -233,41 +230,18 @@ function ListaDeCercanos({
   return (
     <View className="gap-2" accessibilityRole="radiogroup">
       {carga.datos.reportes.map((candidato) => {
-        const marcado = elegido?.id === candidato.id;
         const tipo = carga.datos.tipos?.find((t) => t.id === candidato.tipoId) ?? null;
-        const metros = Math.round(distanciaEnMetros(reporte.coordenadas, candidato.coordenadas));
-        const detalle = `${candidato.direccion} · a ${metros} m`;
         return (
-          <Pressable
+          <OpcionReporteCercano
             key={candidato.id}
-            onPress={() => alElegir(candidato)}
-            disabled={bloqueada}
-            className={`min-h-toque flex-row items-center gap-3 rounded-lg px-4 py-3 active:opacity-70 ${
-              marcado
-                ? 'border-[3px] border-primario bg-superficie-alt'
-                : 'border-2 border-borde-control bg-superficie'
-            }`}
-            accessibilityRole="radio"
-            accessibilityLabel={`${tipo?.nombre ?? 'Reporte'} ${candidato.codigo}, ${detalle}, ${textoAdhesiones(candidato.adhesiones)}`}
-            accessibilityState={{ checked: marcado, selected: marcado }}>
-            <DiscoTipo tipo={tipo} />
-            <View className="flex-1 items-start gap-1">
-              <Texto variante="cuerpo-fuerte" color={marcado ? 'primario' : 'texto'}>
-                {tipo?.nombre ?? 'Reporte'}
-                {tipo && tipo.id === reporte.tipoId ? ' · mismo tipo' : ''}
-              </Texto>
-              <Texto variante="secundario">{candidato.codigo}</Texto>
-              <Texto variante="secundario">{detalle}</Texto>
-              <View className="mt-1 flex-row flex-wrap items-center gap-2">
-                <InsigniaEstado estado={candidato.estado} />
-                <Texto variante="secundario">{textoAdhesiones(candidato.adhesiones)}</Texto>
-              </View>
-            </View>
-            <Icono
-              nombre={marcado ? 'radio-button-on' : 'radio-button-off'}
-              className={marcado ? 'text-primario' : 'text-borde-control'}
-            />
-          </Pressable>
+            reporte={candidato}
+            tipo={tipo}
+            desde={reporte.coordenadas}
+            marcada={elegido?.id === candidato.id}
+            bloqueada={bloqueada}
+            alElegir={() => alElegir(candidato)}
+            nota={tipo && tipo.id === reporte.tipoId ? 'mismo tipo' : undefined}
+          />
         );
       })}
     </View>
