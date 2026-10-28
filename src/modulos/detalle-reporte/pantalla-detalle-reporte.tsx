@@ -3,6 +3,7 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NotaDeVoz } from '@/componentes/nota-de-voz';
 import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { DiscoTipo } from '@/componentes/ui/disco-tipo';
@@ -29,7 +30,6 @@ import {
 import { DetalleCargando } from './detalle-cargando';
 import { FotosDelReporte } from './fotos-del-reporte';
 import { HojaQr } from './hoja-qr';
-import { NotaDeVoz } from './nota-de-voz';
 import { useCambios, useSumarse, type ResultadoSumarse } from './use-detalle';
 
 type Props = {

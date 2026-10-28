@@ -14,6 +14,9 @@ export interface CamposDelReporte {
   /** Sin punto, la calle escrita alcanza: las coordenadas se buscan al enviar (P3). */
   direccionEscrita: string;
   descripcion: string;
+  conNotaDeVoz: boolean;
+  /** Mientras graba, la nota todavía no existe: hay que terminarla antes de enviar. */
+  grabando: boolean;
 }
 
 export type CampoDelReporte = 'tipo' | 'foto' | 'ubicacion' | 'descripcion';
@@ -33,10 +36,12 @@ export function validarReporte(campos: CamposDelReporte): ErroresDelReporte {
   if (!campos.coordenadas && campos.direccionEscrita.trim() === '') {
     errores.ubicacion = 'Marcá en el mapa dónde está el problema o escribí la dirección.';
   }
-  // Sin nota de voz todavía (R1.5), el texto es lo único que cuenta qué pasa: es obligatorio (P15).
+  // Texto, nota de voz o los dos, pero al menos uno (P15). La API acepta los dos en `null`.
   const descripcion = campos.descripcion.trim();
-  if (descripcion === '') errores.descripcion = 'Contanos en pocas palabras qué pasa.';
-  else if (descripcion.length > MAX_DESCRIPCION) {
+  if (campos.grabando) errores.descripcion = 'Terminá la grabación antes de enviar.';
+  else if (descripcion === '' && !campos.conNotaDeVoz) {
+    errores.descripcion = 'Contanos en pocas palabras qué pasa, o grabá una nota de voz.';
+  } else if (descripcion.length > MAX_DESCRIPCION) {
     errores.descripcion = `Puede tener hasta ${MAX_DESCRIPCION} letras. Acortala un poco.`;
   }
   return errores;

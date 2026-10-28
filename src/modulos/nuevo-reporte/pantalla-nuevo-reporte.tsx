@@ -12,6 +12,7 @@ import { Icono } from '@/componentes/ui/icono';
 import { Texto } from '@/componentes/ui/texto';
 import { mensajeDeError } from '@/servicios/api';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
+import { borrarNotaDeVoz, type NotaGrabada } from '@/servicios/notas-de-voz';
 import { crearReporte } from '@/servicios/reportes';
 import { direccionDesdeCoordenadas } from '@/servicios/ubicacion';
 import type { Coordenadas, Reporte, TipoDeReporte } from '@/tipos';
@@ -23,6 +24,7 @@ import { limpiarFotosDelReporte, useFotosDelReporte } from './fotos-del-reporte'
 import { ReporteEnviado } from './reporte-enviado';
 import { revisarUbicacion } from './revisar-ubicacion';
 import { SeccionFoto } from './seccion-foto';
+import { SeccionNotaDeVoz } from './seccion-nota-de-voz';
 import { SeccionUbicacion } from './seccion-ubicacion';
 import {
   limpiarUbicacionDelReporte,
@@ -56,6 +58,8 @@ export function PantallaNuevoReporte() {
   const [id] = useState(() => nuevoId('rep'));
   const [tipoId, setTipoId] = useState<string | null>(null);
   const [descripcion, setDescripcion] = useState('');
+  const [nota, setNota] = useState<NotaGrabada | null>(null);
+  const [grabando, setGrabando] = useState(false);
   const [mostrarErrores, setMostrarErrores] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [errorDeEnvio, setErrorDeEnvio] = useState<string | null>(null);
@@ -81,6 +85,8 @@ export function PantallaNuevoReporte() {
     coordenadas: ubicacion.coordenadas,
     direccionEscrita: ubicacion.direccionEscrita ?? '',
     descripcion,
+    conNotaDeVoz: nota !== null,
+    grabando,
   });
   // El error de la revisión vale mientras la ubicación siga igual: al tocarla, se va.
   const errorDelLugar = lugarRevisado?.para === ubicacion ? lugarRevisado.error : null;
@@ -118,8 +124,9 @@ export function PantallaNuevoReporte() {
       const reporte = await crearReporte({
         id,
         tipoId: tipoId as string,
-        descripcion: descripcion.trim(),
+        descripcion: descripcion.trim() || null,
         fotos,
+        audio: nota,
         coordenadas,
         direccion: escrita || (await direccionParaEnviar(ubicacion.direccion, coordenadas)),
         creadoEn: ahoraIso(),
@@ -128,6 +135,7 @@ export function PantallaNuevoReporte() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       limpiarUbicacionDelReporte();
       limpiarFotosDelReporte();
+      borrarNota();
       setEnviado(reporte);
     } catch (error) {
       setErrorDeEnvio(mensajeDeError(error));
@@ -136,9 +144,15 @@ export function PantallaNuevoReporte() {
     }
   }
 
+  function borrarNota() {
+    if (nota) borrarNotaDeVoz(nota);
+    setNota(null);
+  }
+
   function descartar() {
     limpiarUbicacionDelReporte();
     limpiarFotosDelReporte();
+    borrarNota();
     router.back();
   }
 
@@ -218,6 +232,12 @@ export function PantallaNuevoReporte() {
             maxLength={MAX_DESCRIPCION}
             textAlignVertical="top"
             className="min-h-[128px] py-3"
+          />
+          <SeccionNotaDeVoz
+            nota={nota}
+            alGrabar={setNota}
+            alCambiarGrabando={setGrabando}
+            alBorrar={borrarNota}
           />
         </Seccion>
 

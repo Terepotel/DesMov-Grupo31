@@ -7,13 +7,14 @@ import { Boton } from '@/componentes/ui/boton';
 import { Texto } from '@/componentes/ui/texto';
 
 type Props = {
-  /** La `audioUrl` del reporte: una URL de `/archivos` o, sin enviar, un archivo del teléfono. */
+  /** La `audioUrl` del reporte (una URL de `/archivos`) o la nota recién grabada en el teléfono. */
   url: string;
 };
 
 /**
- * La nota de voz del reporte (R1.5): un botón grande para escucharla o pausarla, cuánto va y cuánto
- * dura. Nada se oculta detrás de un gesto: el avance se ve, no se arrastra.
+ * La nota de voz del reporte (R1.5), en el detalle y en el formulario: un botón grande para
+ * escucharla o pausarla, cuánto va y cuánto dura. Nada se oculta detrás de un gesto: el avance se
+ * ve, no se arrastra.
  */
 export function NotaDeVoz({ url }: Props) {
   const reproductor = useAudioPlayer({ uri: url }, { updateInterval: 250 });
@@ -78,7 +79,7 @@ export function NotaDeVoz({ url }: Props) {
 }
 
 /** `0:07`, `1:00`. Las notas duran un minuto como máximo (P15). */
-function formatearDuracion(segundos: number) {
+export function formatearDuracion(segundos: number) {
   const total = Math.max(0, Math.round(segundos));
   const minutos = Math.floor(total / 60);
   const resto = total % 60;
