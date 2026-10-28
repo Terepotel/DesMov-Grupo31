@@ -1,6 +1,6 @@
 // Única puerta de lectura y escritura de reportes (PDF, pág. 5).
 
-import { File } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 
 import {
   cambiosDeEstadoMock,
@@ -240,6 +240,15 @@ async function subirFoto(foto: FotoElegida): Promise<string> {
   return datos.url;
 }
 
+// Como `POST /archivos`: la foto subida es otra copia, así el formulario puede borrar la suya.
+function subirFotoMock(foto: FotoElegida) {
+  const carpeta = new Directory(Paths.document, 'archivos-mock');
+  carpeta.create({ idempotent: true, intermediates: true });
+  const subida = new File(carpeta, new File(foto.uri).name);
+  new File(foto.uri).copySync(subida, { overwrite: true });
+  return subida.uri;
+}
+
 // Mismas reglas que la API para lo que el formulario no puede prevenir (§8.2). El reporte nuevo
 // queda en los mocks: aparece en «Mis reportes», en el mapa y en el detalle.
 async function crearReporteMock(nuevo: NuevoReporte): Promise<Reporte> {
@@ -284,7 +293,7 @@ async function crearReporteMock(nuevo: NuevoReporte): Promise<Reporte> {
     tipoId: nuevo.tipoId,
     descripcion: nuevo.descripcion,
     audioUrl: null,
-    fotos: nuevo.fotos.map((f) => ({ id: f.id, url: f.uri, momento: 'problema' })),
+    fotos: nuevo.fotos.map((f) => ({ id: f.id, url: subirFotoMock(f), momento: 'problema' })),
     coordenadas: nuevo.coordenadas,
     direccion: nuevo.direccion,
     zonaId: zona.id,

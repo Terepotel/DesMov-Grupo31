@@ -18,6 +18,7 @@ export default function AppLayout() {
         <Stack.Protected guard={usuario?.rol === 'vecino'}>
           <Stack.Screen name="nuevo-reporte" />
           <Stack.Screen name="corregir-ubicacion" />
+          <Stack.Screen name="sacar-foto" />
         </Stack.Protected>
       </Stack>
     </>
