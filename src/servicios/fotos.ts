@@ -20,6 +20,9 @@ export type ResultadoFoto =
 export type ResultadoPermiso =
   Exclude<ResultadoFoto, { estado: 'ok' | 'cancelado' }> | { estado: 'ok' };
 
+/** Fotos del problema por reporte (P16): la API rechaza la tercera (R1). */
+export const MAX_FOTOS_DEL_PROBLEMA = 2;
+
 // La API acepta fotos de hasta 5 MB: con 0.7 una foto de celular queda muy por debajo.
 export const CALIDAD_FOTO = 0.7;
 

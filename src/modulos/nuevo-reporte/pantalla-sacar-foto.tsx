@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,13 +11,16 @@ import { Texto } from '@/componentes/ui/texto';
 import { CALIDAD_FOTO, guardarFoto } from '@/servicios/fotos';
 
 import { AvisoSinCamara } from './aviso-sin-camara';
-import { ponerFotoDelReporte } from './foto-del-reporte';
+import { ponerFotoDelReporte } from './fotos-del-reporte';
 
 /**
  * «Sacar la foto» del nuevo reporte (R1.2): la cámara y un solo botón. La foto queda en
- * `foto-del-reporte` y se vuelve al formulario.
+ * `fotos-del-reporte`, en el `lugar` que manda el formulario (0 la primera, 1 la segunda), y se
+ * vuelve al formulario.
  */
 export function PantallaSacarFoto() {
+  const { lugar } = useLocalSearchParams<{ lugar?: string }>();
+  const indice = lugar === '1' ? 1 : 0;
   const [permiso, pedirPermiso, revisarPermiso] = useCameraPermissions();
   const camara = useRef<CameraView>(null);
   const [lista, setLista] = useState(false);
@@ -38,7 +41,7 @@ export function PantallaSacarFoto() {
     setError(null);
     try {
       const foto = await camara.current.takePictureAsync({ quality: CALIDAD_FOTO });
-      ponerFotoDelReporte(guardarFoto(foto.uri));
+      ponerFotoDelReporte(indice, guardarFoto(foto.uri));
       router.back();
     } catch {
       setError('sacar');
@@ -61,7 +64,7 @@ export function PantallaSacarFoto() {
             </Texto>
           </Pressable>
           <Texto variante="titulo-pantalla" accessibilityRole="header">
-            Foto del problema
+            {indice === 1 ? 'Segunda foto' : 'Foto del problema'}
           </Texto>
         </View>
 

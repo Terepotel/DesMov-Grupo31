@@ -19,7 +19,7 @@ import { ahoraIso } from '@/utilidades/fechas';
 import { nuevoId } from '@/utilidades/reportes';
 import { useCarga } from '@/utilidades/use-carga';
 
-import { limpiarFotoDelReporte, useFotoDelReporte, type FotoDelReporte } from './foto-del-reporte';
+import { limpiarFotosDelReporte, useFotosDelReporte } from './fotos-del-reporte';
 import { ReporteEnviado } from './reporte-enviado';
 import { SeccionFoto } from './seccion-foto';
 import { SeccionUbicacion } from './seccion-ubicacion';
@@ -45,7 +45,7 @@ const cargarTipos = async () => (await obtenerTiposDeReporte()).datos;
 export function PantallaNuevoReporte() {
   const margenes = useSafeAreaInsets();
   const ubicacion = useUbicacionDelReporte();
-  const foto = useFotoDelReporte();
+  const fotos = useFotosDelReporte();
   const { carga: tipos, reintentar: reintentarTipos } = useCarga(cargarTipos);
 
   // El mismo id en cada reintento: si el primer envío llegó pero se cortó la respuesta, la API
@@ -64,13 +64,13 @@ export function PantallaNuevoReporte() {
   // R1.4: la ubicación sale sola del GPS apenas se abre el formulario.
   useEffect(() => {
     limpiarUbicacionDelReporte();
-    limpiarFotoDelReporte();
+    limpiarFotosDelReporte();
     void tomarUbicacionDelGps();
   }, []);
 
   const errores = validarReporte({
     tipoId,
-    foto,
+    fotos,
     coordenadas: ubicacion.coordenadas,
     descripcion,
   });
@@ -89,7 +89,7 @@ export function PantallaNuevoReporte() {
       if (texto) AccessibilityInfo.announceForAccessibility(texto);
       return;
     }
-    // Ya validado: ninguno de los tres es `null`.
+    // Ya validado: ni el tipo ni la ubicación son `null`.
     const coordenadas = ubicacion.coordenadas as Coordenadas;
 
     setEnviando(true);
@@ -98,7 +98,7 @@ export function PantallaNuevoReporte() {
         id,
         tipoId: tipoId as string,
         descripcion: descripcion.trim(),
-        fotos: [foto as FotoDelReporte],
+        fotos,
         coordenadas,
         direccion: await direccionParaEnviar(ubicacion.direccion, coordenadas),
         creadoEn: ahoraIso(),
@@ -106,7 +106,7 @@ export function PantallaNuevoReporte() {
       // R1.9: la confirmación es táctil antes que visual.
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       limpiarUbicacionDelReporte();
-      limpiarFotoDelReporte();
+      limpiarFotosDelReporte();
       setEnviado(reporte);
     } catch (error) {
       setErrorDeEnvio(mensajeDeError(error));
@@ -117,7 +117,7 @@ export function PantallaNuevoReporte() {
 
   function descartar() {
     limpiarUbicacionDelReporte();
-    limpiarFotoDelReporte();
+    limpiarFotosDelReporte();
     router.back();
   }
 
@@ -174,7 +174,7 @@ export function PantallaNuevoReporte() {
           titulo="Foto"
           error={visibles.foto}
           alUbicar={(y) => (posiciones.current.foto = y)}>
-          <SeccionFoto foto={foto} />
+          <SeccionFoto fotos={fotos} />
         </Seccion>
 
         <Seccion

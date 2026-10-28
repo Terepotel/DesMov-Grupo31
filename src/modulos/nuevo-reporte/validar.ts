@@ -9,7 +9,7 @@ export const MAX_DESCRIPCION = 1000;
 
 export interface CamposDelReporte {
   tipoId: string | null;
-  foto: FotoElegida | null;
+  fotos: FotoElegida[];
   coordenadas: Coordenadas | null;
   descripcion: string;
 }
@@ -25,7 +25,9 @@ export function validarReporte(campos: CamposDelReporte): ErroresDelReporte {
   const errores: ErroresDelReporte = {};
   if (!campos.tipoId) errores.tipo = 'Elegí qué tipo de problema es.';
   // Foto obligatoria, no se negocia (R1.2, NF3).
-  if (!campos.foto) errores.foto = 'Sacale una foto al problema o elegí una de la galería.';
+  if (campos.fotos.length === 0) {
+    errores.foto = 'Sacale una foto al problema o elegí una de la galería.';
+  }
   if (!campos.coordenadas) errores.ubicacion = 'Marcá en el mapa dónde está el problema.';
   // Sin nota de voz todavía (R1.5), el texto es lo único que cuenta qué pasa: es obligatorio (P15).
   const descripcion = campos.descripcion.trim();

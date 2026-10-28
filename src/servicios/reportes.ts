@@ -20,7 +20,7 @@ import type {
 import { distanciaEnMetros, estaDentroDe, estaEnCaja, type Caja } from '@/utilidades/geo';
 
 import { ErrorApi, pedir, pedirConEstado, USAR_MOCKS } from './api';
-import type { FotoElegida } from './fotos';
+import { MAX_FOTOS_DEL_PROBLEMA, type FotoElegida } from './fotos';
 import {
   ahoraMock,
   copiar,
@@ -266,6 +266,9 @@ async function crearReporteMock(nuevo: NuevoReporte): Promise<Reporte> {
   }
   if (nuevo.fotos.length === 0) {
     throw new ErrorApi('FOTO_REQUERIDA', 'El reporte necesita al menos una foto.', 422);
+  }
+  if (nuevo.fotos.length > MAX_FOTOS_DEL_PROBLEMA) {
+    throw new ErrorApi('VALIDACION_FALLIDA', 'Se pueden mandar hasta dos fotos del problema.', 400);
   }
   if (!tiposDeReporteMock.some((t) => t.id === nuevo.tipoId)) {
     throw new ErrorApi('TIPO_NO_ENCONTRADO', 'Elegí qué tipo de problema es.', 422);
