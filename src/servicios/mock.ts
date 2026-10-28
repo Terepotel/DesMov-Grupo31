@@ -60,7 +60,8 @@ export async function responderUno<T>(dato: T | undefined, siNoExiste: ErrorApi)
   return copiar(dato);
 }
 
-function verificarEscenario() {
+/** Para las escrituras: con `errorRed`, falla igual que una lectura. */
+export function verificarEscenario() {
   if (escenario === 'errorRed') {
     throw new ErrorApi(errorDeRedMock.error.codigo, errorDeRedMock.error.mensaje);
   }

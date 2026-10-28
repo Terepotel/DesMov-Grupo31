@@ -43,6 +43,7 @@ type Consulta = Record<string, string | number | undefined>;
 
 interface OpcionesDePedido {
   metodo?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  /** Se manda como JSON; un `FormData` va tal cual (`multipart/form-data`, para `/archivos`). */
   cuerpo?: unknown;
   consulta?: Consulta;
 }
@@ -60,8 +61,10 @@ export async function pedirConEstado<R>(
   ruta: string,
   { metodo = 'GET', cuerpo, consulta }: OpcionesDePedido = {},
 ): Promise<{ datos: R; estadoHttp: number }> {
+  const esFormulario = cuerpo instanceof FormData;
   const cabeceras: Record<string, string> = { Accept: 'application/json' };
-  if (cuerpo !== undefined) cabeceras['Content-Type'] = 'application/json';
+  // Con un formulario, `fetch` pone el `Content-Type` con su separador (`boundary`).
+  if (cuerpo !== undefined && !esFormulario) cabeceras['Content-Type'] = 'application/json';
   if (token) cabeceras.Authorization = `Bearer ${token}`;
 
   const controlador = new AbortController();
@@ -72,7 +75,7 @@ export async function pedirConEstado<R>(
     respuesta = await fetch(`${URL_BASE}${ruta}${armarConsulta(consulta)}`, {
       method: metodo,
       headers: cabeceras,
-      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+      body: cuerpo === undefined ? undefined : esFormulario ? cuerpo : JSON.stringify(cuerpo),
       signal: controlador.signal,
     });
   } catch {

@@ -48,6 +48,21 @@ export function estaEnCaja({ latitud, longitud }: Coordenadas, caja: Caja) {
   );
 }
 
+/** Punto dentro de polígono (`Zona.limite`), por cruce de rayos. Un borde puede caer de cualquier lado. */
+export function estaDentroDe({ latitud, longitud }: Coordenadas, poligono: Coordenadas[]) {
+  let dentro = false;
+  for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
+    const a = poligono[i];
+    const b = poligono[j];
+    const cruza =
+      a.latitud > latitud !== b.latitud > latitud &&
+      longitud <
+        ((b.longitud - a.longitud) * (latitud - a.latitud)) / (b.latitud - a.latitud) + a.longitud;
+    if (cruza) dentro = !dentro;
+  }
+  return dentro;
+}
+
 const RADIO_TIERRA_M = 6_371_000;
 
 /** Distancia por haversine, en metros: la misma cuenta que hace la API (DECISIONS P14). */
