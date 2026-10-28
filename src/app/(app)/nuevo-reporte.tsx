@@ -1,11 +1,5 @@
-import { PantallaPendiente } from '@/componentes/pantalla-pendiente';
+import { PantallaNuevoReporte } from '@/modulos/nuevo-reporte/pantalla-nuevo-reporte';
 
-export default function PantallaNuevoReporte() {
-  return (
-    <PantallaPendiente
-      titulo="Nuevo reporte"
-      descripcion="Elegí qué pasa, sacale una foto y mandalo. Menos de un minuto."
-      conVolver
-    />
-  );
+export default function RutaNuevoReporte() {
+  return <PantallaNuevoReporte />;
 }
