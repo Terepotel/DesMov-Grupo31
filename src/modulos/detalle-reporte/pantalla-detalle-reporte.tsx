@@ -3,7 +3,6 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ReproductorNota } from '@/componentes/reproductor-nota';
 import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { DiscoTipo } from '@/componentes/ui/disco-tipo';
@@ -30,6 +29,7 @@ import {
 import { DetalleCargando } from './detalle-cargando';
 import { FotosDelReporte } from './fotos-del-reporte';
 import { HojaQr } from './hoja-qr';
+import { NotaDeVoz } from './nota-de-voz';
 import { useCambios, useSumarse, type ResultadoSumarse } from './use-detalle';
 
 type Props = {
@@ -255,7 +255,7 @@ function Detalle({
   );
 }
 
-/** Texto y audio pueden ir juntos (P15). */
+/** Texto y audio pueden ir juntos (P15). La nota de voz se escucha acá mismo (R1.5). */
 function Descripcion({ reporte }: { reporte: Reporte }) {
   if (!reporte.descripcion && !reporte.audioUrl) {
     return <Texto variante="secundario">Sin descripción.</Texto>;
@@ -263,7 +263,7 @@ function Descripcion({ reporte }: { reporte: Reporte }) {
   return (
     <View className="gap-3">
       {reporte.descripcion && <Texto>{reporte.descripcion}</Texto>}
-      {reporte.audioUrl && <ReproductorNota uri={reporte.audioUrl} />}
+      {reporte.audioUrl && <NotaDeVoz url={reporte.audioUrl} />}
     </View>
   );
 }
