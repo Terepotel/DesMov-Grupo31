@@ -460,3 +460,78 @@ export async function cambiarEstado(
   );
   return respuesta.datos;
 }
+
+/** Radio para buscar el original de un duplicado: el operador mira más lejos que la app al crear. */
+export const RADIO_ORIGINALES_M = 200;
+
+/** Lo que escribe la API en el historial al marcar un duplicado (regla R13). */
+export function comentarioDeDuplicado(codigoDelOriginal: string) {
+  return `Duplicado de ${codigoDelOriginal}`;
+}
+
+/**
+ * Marcar un reporte como duplicado de otro (R4.4, API R13 y DECISIONS P19): queda `rechazado` con el
+ * comentario «Duplicado de GCHU-…», `duplicadoDe` apunta al original y su autor pasa a estar sumado
+ * al original. Repetir el pedido con el mismo original no cambia nada. `DUPLICADO_INVALIDO` si es el
+ * mismo reporte, el original no existe o está cerrado, ya es duplicado, o este reporte es original de
+ * otros; `TRANSICION_INVALIDA` si este reporte ya está cerrado.
+ */
+export async function marcarDuplicado(id: string, originalId: string): Promise<Reporte> {
+  if (USAR_MOCKS) {
+    const operadorId = usuarioIdDeLaSesionMock();
+    const operador = usuariosMock.find((u) => u.id === operadorId);
+    if (operador?.rol !== 'operador') {
+      throw new ErrorApi('SIN_PERMISO', 'Esta parte es sólo para operadores.', 403);
+    }
+    const duplicado = reportesMock.find((r) => r.id === id);
+    const noEncontrado = new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404);
+    await responderUno(duplicado, noEncontrado);
+    if (!duplicado) throw noEncontrado;
+    const invalido = new ErrorApi(
+      'DUPLICADO_INVALIDO',
+      'No se puede marcar como duplicado de ese reporte.',
+      422,
+    );
+    const original = reportesMock.find((r) => r.id === originalId);
+    if (id === originalId || !original) throw invalido;
+    if (duplicado.duplicadoDe === originalId) return copiar(duplicado);
+    if (!DESTINOS_POR_ESTADO[duplicado.estado].includes('rechazado')) {
+      throw new ErrorApi(
+        'TRANSICION_INVALIDA',
+        'Ese cambio de estado no es posible desde el estado actual.',
+        422,
+      );
+    }
+    if (
+      !ABIERTOS.includes(original.estado) ||
+      original.duplicadoDe !== null ||
+      reportesMock.some((r) => r.duplicadoDe === id)
+    ) {
+      throw invalido;
+    }
+    // Se trabaja sobre los del mock (no copias): el cambio tiene que quedar.
+    duplicado.estado = 'rechazado';
+    duplicado.duplicadoDe = originalId;
+    const numero = cambiosDeEstadoMock.filter((c) => c.reporteId === id).length + 1;
+    cambiosDeEstadoMock.push({
+      id: `cam-${id}-${numero}`,
+      reporteId: id,
+      estado: 'rechazado',
+      comentario: comentarioDeDuplicado(original.codigo),
+      operadorId,
+      fechaHora: ahoraMock(),
+    });
+    const clave = `${originalId}|${duplicado.autorId}`;
+    if (duplicado.autorId !== original.autorId && !adhesionesMock.has(clave)) {
+      adhesionesMock.add(clave);
+      original.adhesiones += 1;
+    }
+    return copiar(duplicado);
+  }
+
+  const respuesta = await pedir<RespuestaUno<Reporte>>(
+    `/reportes/${encodeURIComponent(id)}/duplicado`,
+    { metodo: 'POST', cuerpo: { originalId } },
+  );
+  return respuesta.datos;
+}
