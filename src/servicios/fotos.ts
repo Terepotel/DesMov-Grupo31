@@ -1,8 +1,9 @@
 // La foto del problema: permiso, galería y dónde se guarda. El permiso de cámara es la condición
 // para reportar, aunque la foto se elija de la galería (NF3, consignas P1).
 
-import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
+
+import { borrarArchivoLocal, guardarEnDocumentos } from './archivos-locales';
 
 export interface FotoElegida {
   /** Ruta local del archivo, hasta que se sube con `POST /archivos`. */
@@ -54,30 +55,11 @@ export async function elegirFotoDeLaGaleria(): Promise<ResultadoFoto> {
   }
 }
 
-/**
- * La cámara y la galería dejan la foto en la caché, que el sistema puede vaciar. Se pasa a
- * `<documentos>/fotos/` para que siga ahí hasta que se sube (y, con la cola, aunque no haya señal).
- * Lanza si no se puede guardar.
- */
+/** Pasa la foto de la caché a `<documentos>/fotos/`. Lanza si no se puede guardar. */
 export function guardarFoto(uri: string): FotoElegida {
-  const carpeta = new Directory(Paths.document, 'fotos');
-  carpeta.create({ idempotent: true, intermediates: true });
-  const archivo = new File(uri);
-  const extension = archivo.extension || '.jpg';
-  const destino = new File(
-    carpeta,
-    `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${extension}`,
-  );
-  archivo.moveSync(destino);
-  return { uri: destino.uri };
+  return { uri: guardarEnDocumentos(uri, 'fotos', '.jpg') };
 }
 
-/** Cuando la foto ya no hace falta: se reemplazó, se descartó el reporte o ya se subió. */
 export function borrarFoto(foto: FotoElegida) {
-  try {
-    const archivo = new File(foto.uri);
-    if (archivo.exists) archivo.delete();
-  } catch {
-    // Si no se puede borrar, queda en la carpeta de la app: no le cambia nada al vecino.
-  }
+  borrarArchivoLocal(foto.uri);
 }
