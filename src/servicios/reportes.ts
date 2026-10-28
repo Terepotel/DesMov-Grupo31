@@ -21,6 +21,7 @@ import { distanciaEnMetros, estaDentroDe, estaEnCaja, type Caja } from '@/utilid
 
 import { ErrorApi, pedir, pedirConEstado, USAR_MOCKS } from './api';
 import { MAX_FOTOS_DEL_PROBLEMA, type FotoElegida } from './fotos';
+import type { NotaDeVoz } from './notas-de-voz';
 import {
   ahoraMock,
   copiar,
@@ -195,6 +196,8 @@ export interface NuevoReporte {
   descripcion: string | null;
   /** 1 o 2 (API R1). `id` también lo pone el teléfono. */
   fotos: (FotoElegida & { id: string })[];
+  /** Opcional (R1.5): texto, nota de voz o los dos (P15). */
+  audio: NotaDeVoz | null;
   coordenadas: Coordenadas;
   direccion: string;
   /** Cuándo lo hizo el vecino, no cuándo se subió. */
@@ -202,15 +205,15 @@ export interface NuevoReporte {
 }
 
 /**
- * Crea un reporte (R1). Primero sube cada foto con `POST /archivos` y después manda el reporte con
- * esas URLs. Devuelve el reporte como quedó en el servidor, con su número de seguimiento (R1.6).
+ * Crea un reporte (R1). Primero sube cada foto y la nota de voz con `POST /archivos` y después
+ * manda el reporte con esas URLs. Devuelve el reporte como quedó en el servidor, con su número de seguimiento (R1.6).
  */
 export async function crearReporte(nuevo: NuevoReporte): Promise<Reporte> {
   if (USAR_MOCKS) return crearReporteMock(nuevo);
 
   const fotos = [];
   for (const foto of nuevo.fotos) {
-    fotos.push({ id: foto.id, url: await subirFoto(foto) });
+    fotos.push({ id: foto.id, url: await subirArchivo(foto.uri) });
   }
   const { datos } = await pedir<RespuestaUno<Reporte>>('/reportes', {
     metodo: 'POST',
@@ -218,7 +221,7 @@ export async function crearReporte(nuevo: NuevoReporte): Promise<Reporte> {
       id: nuevo.id,
       tipoId: nuevo.tipoId,
       descripcion: nuevo.descripcion,
-      audioUrl: null,
+      audioUrl: nuevo.audio ? await subirArchivo(nuevo.audio.uri) : null,
       fotos,
       coordenadas: nuevo.coordenadas,
       direccion: nuevo.direccion,
@@ -228,11 +231,11 @@ export async function crearReporte(nuevo: NuevoReporte): Promise<Reporte> {
   return datos;
 }
 
-async function subirFoto(foto: FotoElegida): Promise<string> {
+async function subirArchivo(uri: string): Promise<string> {
   const formulario = new FormData();
   // El `fetch` global de Expo (`expo/fetch`) no acepta el `{ uri, name, type }` de React Native:
   // el archivo va como `File` de expo-file-system, que se lee como un `Blob`.
-  formulario.append('archivo', new File(foto.uri));
+  formulario.append('archivo', new File(uri));
   const { datos } = await pedir<RespuestaUno<{ url: string }>>('/archivos', {
     metodo: 'POST',
     cuerpo: formulario,
@@ -240,12 +243,12 @@ async function subirFoto(foto: FotoElegida): Promise<string> {
   return datos.url;
 }
 
-// Como `POST /archivos`: la foto subida es otra copia, así el formulario puede borrar la suya.
-function subirFotoMock(foto: FotoElegida) {
+// Como `POST /archivos`: lo subido es otra copia, así el formulario puede borrar la suya.
+function subirArchivoMock(uri: string) {
   const carpeta = new Directory(Paths.document, 'archivos-mock');
   carpeta.create({ idempotent: true, intermediates: true });
-  const subida = new File(carpeta, new File(foto.uri).name);
-  new File(foto.uri).copySync(subida, { overwrite: true });
+  const subida = new File(carpeta, new File(uri).name);
+  new File(uri).copySync(subida, { overwrite: true });
   return subida.uri;
 }
 
@@ -295,8 +298,12 @@ async function crearReporteMock(nuevo: NuevoReporte): Promise<Reporte> {
     codigo: `GCHU-${anio}-${String(ultimo + 1).padStart(5, '0')}`,
     tipoId: nuevo.tipoId,
     descripcion: nuevo.descripcion,
-    audioUrl: null,
-    fotos: nuevo.fotos.map((f) => ({ id: f.id, url: subirFotoMock(f), momento: 'problema' })),
+    audioUrl: nuevo.audio ? subirArchivoMock(nuevo.audio.uri) : null,
+    fotos: nuevo.fotos.map((f) => ({
+      id: f.id,
+      url: subirArchivoMock(f.uri),
+      momento: 'problema',
+    })),
     coordenadas: nuevo.coordenadas,
     direccion: nuevo.direccion,
     zonaId: zona.id,
