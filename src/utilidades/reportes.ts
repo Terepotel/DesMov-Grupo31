@@ -17,6 +17,18 @@ export function enlaceDelReporte(codigo: string) {
   return `${ESQUEMA}://reporte/${codigo}`;
 }
 
+/**
+ * El código que trae un QR (o lo que pegó una persona): el enlace del QR (`desmovgrupo31://reporte/
+ * GCHU-…`), uno con otro esquema que termine igual (`exp://…/--/reporte/GCHU-…`) o el código pelado
+ * (D2 de la API). `null` si no es de un reporte.
+ */
+export function codigoDesdeQr(texto: string): string | null {
+  const limpio = texto.trim();
+  if (esCodigoDeSeguimiento(limpio)) return limpio.toUpperCase();
+  const enlace = /\/reporte\/(GCHU-\d{4}-\d{5})\/?$/i.exec(limpio);
+  return enlace ? enlace[1].toUpperCase() : null;
+}
+
 /** «Nadie se sumó todavía», «1 vecino se sumó», «3 vecinos se sumaron». */
 export function textoAdhesiones(cantidad: number) {
   if (cantidad === 0) return 'Nadie se sumó todavía';
