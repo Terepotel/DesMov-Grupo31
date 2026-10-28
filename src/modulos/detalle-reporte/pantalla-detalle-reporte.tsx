@@ -3,6 +3,7 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ReproductorNota } from '@/componentes/reproductor-nota';
 import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { DiscoTipo } from '@/componentes/ui/disco-tipo';
@@ -254,7 +255,7 @@ function Detalle({
   );
 }
 
-/** Texto y audio pueden ir juntos (P15). El audio todavía no se reproduce: llega con `expo-audio`. */
+/** Texto y audio pueden ir juntos (P15). */
 function Descripcion({ reporte }: { reporte: Reporte }) {
   if (!reporte.descripcion && !reporte.audioUrl) {
     return <Texto variante="secundario">Sin descripción.</Texto>;
@@ -262,12 +263,7 @@ function Descripcion({ reporte }: { reporte: Reporte }) {
   return (
     <View className="gap-3">
       {reporte.descripcion && <Texto>{reporte.descripcion}</Texto>}
-      {reporte.audioUrl && (
-        <View className="flex-row items-center gap-3">
-          <Icono nombre="mic-outline" className="text-texto" />
-          <Texto className="flex-1">Este reporte tiene una nota de voz.</Texto>
-        </View>
-      )}
+      {reporte.audioUrl && <ReproductorNota uri={reporte.audioUrl} />}
     </View>
   );
 }
