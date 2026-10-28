@@ -1,6 +1,14 @@
 // Única puerta de lectura y escritura de reportes (PDF, pág. 5).
 
-import { cambiosDeEstadoMock, reportesMock, usuariosMock } from '@/mocks';
+import { Directory, File, Paths } from 'expo-file-system';
+
+import {
+  cambiosDeEstadoMock,
+  reportesMock,
+  tiposDeReporteMock,
+  usuariosMock,
+  zonasMock,
+} from '@/mocks';
 import type {
   CambioDeEstado,
   Coordenadas,
@@ -9,10 +17,18 @@ import type {
   RespuestaLista,
   RespuestaUno,
 } from '@/tipos';
-import { distanciaEnMetros, estaEnCaja, type Caja } from '@/utilidades/geo';
+import { distanciaEnMetros, estaDentroDe, estaEnCaja, type Caja } from '@/utilidades/geo';
 
 import { ErrorApi, pedir, pedirConEstado, USAR_MOCKS } from './api';
-import { ahoraMock, copiar, responderLista, responderUno, usuarioIdDeLaSesionMock } from './mock';
+import { MAX_FOTOS_DEL_PROBLEMA, type FotoElegida } from './fotos';
+import {
+  ahoraMock,
+  copiar,
+  responderLista,
+  responderUno,
+  usuarioIdDeLaSesionMock,
+  verificarEscenario,
+} from './mock';
 
 export interface FiltrosDeReportes {
   tipoId?: string;
@@ -169,6 +185,139 @@ export async function sumarseAReporte(
     { metodo: 'POST' },
   );
   return { reporte: datos.datos, yaEstaba: estadoHttp === 200 };
+}
+
+/** Lo que manda el formulario de nuevo reporte. El resto (`codigo`, `zonaId`, `estado`…) lo pone el servidor. */
+export interface NuevoReporte {
+  /** Lo genera el teléfono (`nuevoId('rep')`): reenviar con el mismo id no duplica. */
+  id: string;
+  tipoId: string;
+  descripcion: string | null;
+  /** 1 o 2 (API R1). `id` también lo pone el teléfono. */
+  fotos: (FotoElegida & { id: string })[];
+  coordenadas: Coordenadas;
+  direccion: string;
+  /** Cuándo lo hizo el vecino, no cuándo se subió. */
+  creadoEn: string;
+}
+
+/**
+ * Crea un reporte (R1). Primero sube cada foto con `POST /archivos` y después manda el reporte con
+ * esas URLs. Devuelve el reporte como quedó en el servidor, con su número de seguimiento (R1.6).
+ */
+export async function crearReporte(nuevo: NuevoReporte): Promise<Reporte> {
+  if (USAR_MOCKS) return crearReporteMock(nuevo);
+
+  const fotos = [];
+  for (const foto of nuevo.fotos) {
+    fotos.push({ id: foto.id, url: await subirFoto(foto) });
+  }
+  const { datos } = await pedir<RespuestaUno<Reporte>>('/reportes', {
+    metodo: 'POST',
+    cuerpo: {
+      id: nuevo.id,
+      tipoId: nuevo.tipoId,
+      descripcion: nuevo.descripcion,
+      audioUrl: null,
+      fotos,
+      coordenadas: nuevo.coordenadas,
+      direccion: nuevo.direccion,
+      creadoEn: nuevo.creadoEn,
+    },
+  });
+  return datos;
+}
+
+async function subirFoto(foto: FotoElegida): Promise<string> {
+  const formulario = new FormData();
+  // El `fetch` global de Expo (`expo/fetch`) no acepta el `{ uri, name, type }` de React Native:
+  // el archivo va como `File` de expo-file-system, que se lee como un `Blob`.
+  formulario.append('archivo', new File(foto.uri));
+  const { datos } = await pedir<RespuestaUno<{ url: string }>>('/archivos', {
+    metodo: 'POST',
+    cuerpo: formulario,
+  });
+  return datos.url;
+}
+
+// Como `POST /archivos`: la foto subida es otra copia, así el formulario puede borrar la suya.
+function subirFotoMock(foto: FotoElegida) {
+  const carpeta = new Directory(Paths.document, 'archivos-mock');
+  carpeta.create({ idempotent: true, intermediates: true });
+  const subida = new File(carpeta, new File(foto.uri).name);
+  new File(foto.uri).copySync(subida, { overwrite: true });
+  return subida.uri;
+}
+
+// Mismas reglas que la API para lo que el formulario no puede prevenir (§8.2). El reporte nuevo
+// queda en los mocks: aparece en «Mis reportes», en el mapa y en el detalle.
+async function crearReporteMock(nuevo: NuevoReporte): Promise<Reporte> {
+  verificarEscenario();
+  const autorId = usuarioIdDeLaSesionMock();
+  if (!autorId) throw new ErrorApi('NO_AUTENTICADO', 'Tenés que ingresar de nuevo.', 401);
+
+  // Idempotente por id: si ya llegó (un reintento), se devuelve el mismo.
+  const existente = reportesMock.find((r) => r.id === nuevo.id);
+  if (existente) {
+    if (existente.autorId !== autorId) {
+      throw new ErrorApi('ID_EN_USO', 'Ese identificador ya está en uso.', 409);
+    }
+    return copiar(existente);
+  }
+  if (nuevo.fotos.length === 0) {
+    throw new ErrorApi('FOTO_REQUERIDA', 'El reporte necesita al menos una foto.', 422);
+  }
+  if (nuevo.fotos.length > MAX_FOTOS_DEL_PROBLEMA) {
+    throw new ErrorApi('VALIDACION_FALLIDA', 'Se pueden mandar hasta dos fotos del problema.', 400);
+  }
+  if (!tiposDeReporteMock.some((t) => t.id === nuevo.tipoId)) {
+    throw new ErrorApi('TIPO_NO_ENCONTRADO', 'Elegí qué tipo de problema es.', 422);
+  }
+  const zona = zonasMock.find((z) => estaDentroDe(nuevo.coordenadas, z.limite));
+  if (!zona) {
+    throw new ErrorApi(
+      'FUERA_DE_LA_CIUDAD',
+      'Ese punto queda fuera de Gualeguaychú. Corregilo en el mapa.',
+      422,
+    );
+  }
+
+  // `GCHU-<año>-<5 dígitos>`, correlativo por año (API R4).
+  const anio = nuevo.creadoEn.slice(0, 4);
+  const ultimo = Math.max(
+    0,
+    ...reportesMock
+      .filter((r) => r.codigo.startsWith(`GCHU-${anio}-`))
+      .map((r) => Number(r.codigo.slice(-5))),
+  );
+  const reporte: Reporte = {
+    id: nuevo.id,
+    codigo: `GCHU-${anio}-${String(ultimo + 1).padStart(5, '0')}`,
+    tipoId: nuevo.tipoId,
+    descripcion: nuevo.descripcion,
+    audioUrl: null,
+    fotos: nuevo.fotos.map((f) => ({ id: f.id, url: subirFotoMock(f), momento: 'problema' })),
+    coordenadas: nuevo.coordenadas,
+    direccion: nuevo.direccion,
+    zonaId: zona.id,
+    estado: 'recibido',
+    autorId,
+    cuadrillaId: null,
+    duplicadoDe: null,
+    adhesiones: 0,
+    creadoEn: nuevo.creadoEn,
+    sincronizado: true,
+  };
+  reportesMock.push(reporte);
+  cambiosDeEstadoMock.push({
+    id: `cam-${reporte.id}-1`,
+    reporteId: reporte.id,
+    estado: 'recibido',
+    comentario: null,
+    operadorId: null,
+    fechaHora: reporte.creadoEn,
+  });
+  return copiar(reporte);
 }
 
 /** Los reportes del usuario de la sesión, del más nuevo al más viejo. */

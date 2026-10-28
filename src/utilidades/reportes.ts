@@ -18,6 +18,17 @@ export function enlaceDelReporte(codigo: string) {
 }
 
 /**
+ * Id que pone el teléfono (`rep-k3x9a1b2c3d4`): con el mismo id, la API no duplica el reporte si se
+ * reintenta el envío (idempotencia de `POST /reportes`). Mismo formato que los del servidor.
+ */
+export function nuevoId(prefijo: 'rep' | 'fot') {
+  const alfabeto = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let texto = '';
+  for (let i = 0; i < 12; i++) texto += alfabeto[Math.floor(Math.random() * alfabeto.length)];
+  return `${prefijo}-${texto}`;
+}
+
+/**
  * El código que trae un QR (o lo que pegó una persona): el enlace del QR (`desmovgrupo31://reporte/
  * GCHU-…`), uno con otro esquema que termine igual (`exp://…/--/reporte/GCHU-…`) o el código pelado
  * (D2 de la API). `null` si no es de un reporte.
