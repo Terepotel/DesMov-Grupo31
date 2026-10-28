@@ -5,7 +5,7 @@ import { requestRecordingPermissionsAsync } from 'expo-audio';
 
 import { borrarArchivoLocal, guardarEnDocumentos } from './archivos-locales';
 
-export interface NotaDeVoz {
+export interface NotaGrabada {
   /** Ruta local del archivo (m4a), hasta que se sube con `POST /archivos`. */
   uri: string;
 }
@@ -30,10 +30,10 @@ export async function pedirPermisoDeMicrofono(): Promise<ResultadoMicrofono> {
 }
 
 /** Pasa la grabación de la caché a `<documentos>/notas/`. Lanza si no se puede guardar. */
-export function guardarNotaDeVoz(uri: string): NotaDeVoz {
+export function guardarNotaDeVoz(uri: string): NotaGrabada {
   return { uri: guardarEnDocumentos(uri, 'notas', '.m4a') };
 }
 
-export function borrarNotaDeVoz(nota: NotaDeVoz) {
+export function borrarNotaDeVoz(nota: NotaGrabada) {
   borrarArchivoLocal(nota.uri);
 }

@@ -21,7 +21,7 @@ import { distanciaEnMetros, estaDentroDe, estaEnCaja, type Caja } from '@/utilid
 
 import { ErrorApi, pedir, pedirConEstado, USAR_MOCKS } from './api';
 import { MAX_FOTOS_DEL_PROBLEMA, type FotoElegida } from './fotos';
-import type { NotaDeVoz } from './notas-de-voz';
+import type { NotaGrabada } from './notas-de-voz';
 import {
   ahoraMock,
   copiar,
@@ -197,7 +197,7 @@ export interface NuevoReporte {
   /** 1 o 2 (API R1). `id` también lo pone el teléfono. */
   fotos: (FotoElegida & { id: string })[];
   /** Opcional (R1.5): texto, nota de voz o los dos (P15). */
-  audio: NotaDeVoz | null;
+  audio: NotaGrabada | null;
   coordenadas: Coordenadas;
   direccion: string;
   /** Cuándo lo hizo el vecino, no cuándo se subió. */

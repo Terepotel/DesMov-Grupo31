@@ -12,7 +12,7 @@ import { Icono } from '@/componentes/ui/icono';
 import { Texto } from '@/componentes/ui/texto';
 import { mensajeDeError } from '@/servicios/api';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
-import { borrarNotaDeVoz, type NotaDeVoz } from '@/servicios/notas-de-voz';
+import { borrarNotaDeVoz, type NotaGrabada } from '@/servicios/notas-de-voz';
 import { crearReporte } from '@/servicios/reportes';
 import { direccionDesdeCoordenadas } from '@/servicios/ubicacion';
 import type { Coordenadas, Reporte, TipoDeReporte } from '@/tipos';
@@ -58,7 +58,7 @@ export function PantallaNuevoReporte() {
   const [id] = useState(() => nuevoId('rep'));
   const [tipoId, setTipoId] = useState<string | null>(null);
   const [descripcion, setDescripcion] = useState('');
-  const [nota, setNota] = useState<NotaDeVoz | null>(null);
+  const [nota, setNota] = useState<NotaGrabada | null>(null);
   const [grabando, setGrabando] = useState(false);
   const [mostrarErrores, setMostrarErrores] = useState(false);
   const [enviando, setEnviando] = useState(false);

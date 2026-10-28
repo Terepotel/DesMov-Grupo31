@@ -8,7 +8,7 @@ import {
 import { useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 
-import { formatearDuracion, ReproductorNota } from '@/componentes/reproductor-nota';
+import { formatearDuracion, NotaDeVoz } from '@/componentes/nota-de-voz';
 import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { Texto } from '@/componentes/ui/texto';
@@ -16,7 +16,7 @@ import {
   guardarNotaDeVoz,
   MAX_SEGUNDOS_NOTA,
   pedirPermisoDeMicrofono,
-  type NotaDeVoz,
+  type NotaGrabada,
   type ResultadoMicrofono,
 } from '@/servicios/notas-de-voz';
 
@@ -28,12 +28,12 @@ const OPCIONES: RecordingOptions = {
 };
 
 type Props = {
-  nota: NotaDeVoz | null;
+  nota: NotaGrabada | null;
   /**
    * El grabador avisa que terminó desde un listener que se registra una sola vez: tienen que ser
    * funciones estables, como las de `useState`.
    */
-  alGrabar: (nota: NotaDeVoz) => void;
+  alGrabar: (nota: NotaGrabada) => void;
   alCambiarGrabando: (grabando: boolean) => void;
   alBorrar: () => void;
 };
@@ -157,7 +157,7 @@ export function SeccionNotaDeVoz({ nota, alGrabar, alCambiarGrabando, alBorrar }
   if (nota) {
     return (
       <View className="gap-3">
-        <ReproductorNota uri={nota.uri} />
+        <NotaDeVoz url={nota.uri} />
         <Boton texto="Borrar la nota" variante="peligro" icono="trash-outline" onPress={alBorrar} />
       </View>
     );
