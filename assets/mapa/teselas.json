@@ -1,0 +1,55 @@
+{
+  "version": "20261026",
+  "fuente": "OpenStreetMap (ODbL) vía Protomaps",
+  "temas": [
+    "claro",
+    "oscuro"
+  ],
+  "fondo": {
+    "claro": "#e2dfda",
+    "oscuro": "#1f1f1f"
+  },
+  "caja": {
+    "oeste": -58.56,
+    "sur": -33.05,
+    "este": -58.47,
+    "norte": -32.97
+  },
+  "cajaPorZoom": {
+    "13": {
+      "oeste": -58.82,
+      "sur": -33.31,
+      "este": -58.22,
+      "norte": -32.71
+    },
+    "14": {
+      "oeste": -58.82,
+      "sur": -33.31,
+      "este": -58.22,
+      "norte": -32.71
+    },
+    "15": {
+      "oeste": -58.72,
+      "sur": -33.2,
+      "este": -58.32,
+      "norte": -32.82
+    },
+    "16": {
+      "oeste": -58.6,
+      "sur": -33.08,
+      "este": -58.43,
+      "norte": -32.94
+    },
+    "17": {
+      "oeste": -58.6,
+      "sur": -33.08,
+      "este": -58.43,
+      "norte": -32.94
+    }
+  },
+  "zoomMin": 13,
+  "zoomMax": 17,
+  "tamanioTesela": 512,
+  "formato": "webp",
+  "cantidadPorTema": 7596
+}

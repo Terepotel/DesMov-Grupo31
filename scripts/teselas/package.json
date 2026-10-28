@@ -1,0 +1,13 @@
+{
+  "name": "teselas-gualeguaychu",
+  "private": true,
+  "description": "Genera las teselas del mapa sin señal (assets/mapa/teselas.zip) a partir de OpenStreetMap.",
+  "type": "module",
+  "scripts": {
+    "generar": "node generar.mjs"
+  },
+  "dependencies": {
+    "@protomaps/basemaps": "5.7.2",
+    "fflate": "0.8.2"
+  }
+}

@@ -9,7 +9,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AnimatedSplashOverlay } from '@/componentes/animated-icon';
 import { ProveedorSesion, useSesion } from '@/modulos/autenticacion/contexto';
 
 SplashScreen.preventAutoHideAsync();
