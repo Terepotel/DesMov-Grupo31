@@ -29,6 +29,7 @@ import {
 import { DetalleCargando } from './detalle-cargando';
 import { FotosDelReporte } from './fotos-del-reporte';
 import { HojaQr } from './hoja-qr';
+import { NotaDeVoz } from './nota-de-voz';
 import { useCambios, useSumarse, type ResultadoSumarse } from './use-detalle';
 
 type Props = {
@@ -254,7 +255,7 @@ function Detalle({
   );
 }
 
-/** Texto y audio pueden ir juntos (P15). El audio todavía no se reproduce: llega con `expo-audio`. */
+/** Texto y audio pueden ir juntos (P15). La nota de voz se escucha acá mismo (R1.5). */
 function Descripcion({ reporte }: { reporte: Reporte }) {
   if (!reporte.descripcion && !reporte.audioUrl) {
     return <Texto variante="secundario">Sin descripción.</Texto>;
@@ -262,12 +263,7 @@ function Descripcion({ reporte }: { reporte: Reporte }) {
   return (
     <View className="gap-3">
       {reporte.descripcion && <Texto>{reporte.descripcion}</Texto>}
-      {reporte.audioUrl && (
-        <View className="flex-row items-center gap-3">
-          <Icono nombre="mic-outline" className="text-texto" />
-          <Texto className="flex-1">Este reporte tiene una nota de voz.</Texto>
-        </View>
-      )}
+      {reporte.audioUrl && <NotaDeVoz url={reporte.audioUrl} />}
     </View>
   );
 }
