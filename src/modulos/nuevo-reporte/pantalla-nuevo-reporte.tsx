@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,6 +10,7 @@ import { CampoTexto } from '@/componentes/ui/campo-texto';
 import { FichaTipo, FichaTipoCargando } from '@/componentes/ui/ficha-tipo';
 import { Icono } from '@/componentes/ui/icono';
 import { Texto } from '@/componentes/ui/texto';
+import { useSesion } from '@/modulos/autenticacion/contexto';
 import { mensajeDeError } from '@/servicios/api';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
 import { borrarNotaDeVoz, type NotaGrabada } from '@/servicios/notas-de-voz';
@@ -21,6 +22,7 @@ import { nuevoId } from '@/utilidades/reportes';
 import { useCarga } from '@/utilidades/use-carga';
 
 import { limpiarFotosDelReporte, useFotosDelReporte } from './fotos-del-reporte';
+import { HojaDuplicados } from './hoja-duplicados';
 import { ReporteEnviado } from './reporte-enviado';
 import { revisarUbicacion } from './revisar-ubicacion';
 import { SeccionFoto } from './seccion-foto';
@@ -32,6 +34,7 @@ import {
   useUbicacionDelReporte,
   type UbicacionDelReporte,
 } from './ubicacion-del-reporte';
+import { useCercanos, type Cercanos } from './use-cercanos';
 import {
   CAMPOS,
   MAX_DESCRIPCION,
@@ -64,6 +67,18 @@ export function PantallaNuevoReporte() {
   const [enviando, setEnviando] = useState(false);
   const [errorDeEnvio, setErrorDeEnvio] = useState<string | null>(null);
   const [enviado, setEnviado] = useState<Reporte | null>(null);
+  const [sumado, setSumado] = useState<{ reporte: Reporte; yaEstaba: boolean } | null>(null);
+  const { usuario } = useSesion();
+  const cercanos = useCercanos(ubicacion.coordenadas, tipoId);
+  // Lo que muestra la hoja: se cierra sin borrarlo, así la animación de salida tiene qué mostrar.
+  const [enLaHoja, setEnLaHoja] = useState<Cercanos | null>(null);
+  const [hojaAbierta, setHojaAbierta] = useState(false);
+  const [vecesHoja, setVecesHoja] = useState(0);
+  // Los que ya se le mostraron: si dijo que es otro problema, no se le vuelve a abrir la hoja por
+  // los mismos (por ejemplo, al elegir el tipo después del lugar).
+  const yaMostrados = useRef(new Set<string>());
+  // Fue a mirar el detalle de uno: al volver, la hoja sigue donde estaba.
+  const volverALaHoja = useRef(false);
   const [lugarRevisado, setLugarRevisado] = useState<{
     para: UbicacionDelReporte;
     error: string;
@@ -78,6 +93,26 @@ export function PantallaNuevoReporte() {
     limpiarFotosDelReporte();
     void tomarUbicacionDelGps();
   }, []);
+
+  // R1.8 y R3.4: apenas hay un punto con reportes cerca, vibra y pregunta si es el mismo.
+  useEffect(() => {
+    if (!cercanos) return;
+    const nuevos = cercanos.reportes.filter((r) => !yaMostrados.current.has(r.id));
+    if (nuevos.length === 0) return;
+    for (const reporte of cercanos.reportes) yaMostrados.current.add(reporte.id);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    setEnLaHoja(cercanos);
+    setVecesHoja((n) => n + 1);
+    setHojaAbierta(true);
+  }, [cercanos]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!volverALaHoja.current) return;
+      volverALaHoja.current = false;
+      setHojaAbierta(true);
+    }, []),
+  );
 
   const faltantes = validarReporte({
     tipoId,
@@ -133,9 +168,7 @@ export function PantallaNuevoReporte() {
       });
       // R1.9: la confirmación es táctil antes que visual.
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      limpiarUbicacionDelReporte();
-      limpiarFotosDelReporte();
-      borrarNota();
+      limpiar();
       setEnviado(reporte);
     } catch (error) {
       setErrorDeEnvio(mensajeDeError(error));
@@ -149,14 +182,40 @@ export function PantallaNuevoReporte() {
     setNota(null);
   }
 
-  function descartar() {
+  function limpiar() {
     limpiarUbicacionDelReporte();
     limpiarFotosDelReporte();
     borrarNota();
+  }
+
+  function descartar() {
+    limpiar();
     router.back();
   }
 
+  function verCercanos(lista: Cercanos) {
+    setEnLaHoja(lista);
+    setVecesHoja((n) => n + 1);
+    setHojaAbierta(true);
+  }
+
+  function verDetalle(reporte: Reporte) {
+    // Misma `key`: al volver, la hoja conserva el que estaba elegido.
+    volverALaHoja.current = true;
+    setHojaAbierta(false);
+    router.push({ pathname: '/reporte/[id]', params: { id: reporte.id } });
+  }
+
+  function alSumarse(reporte: Reporte, yaEstaba: boolean) {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    // El reporte nuevo no se manda: la foto y la nota ya no hacen falta.
+    limpiar();
+    setHojaAbierta(false);
+    setSumado({ reporte, yaEstaba });
+  }
+
   if (enviado) return <ReporteEnviado reporte={enviado} />;
+  if (sumado) return <ReporteEnviado reporte={sumado.reporte} sumado={sumado} />;
 
   return (
     <ScrollView
@@ -217,6 +276,26 @@ export function PantallaNuevoReporte() {
           error={visibles.ubicacion}
           alUbicar={(y) => (posiciones.current.ubicacion = y)}>
           <SeccionUbicacion ubicacion={ubicacion} />
+          {cercanos && cercanos.reportes.length > 0 && (
+            <View className="gap-3">
+              <Aviso
+                tono="atencion"
+                icono="git-merge-outline"
+                titulo={
+                  cercanos.reportes.length === 1
+                    ? 'Hay un reporte abierto muy cerca.'
+                    : `Hay ${cercanos.reportes.length} reportes abiertos muy cerca.`
+                }
+                detalle="Si es el mismo problema, sumate en vez de hacer otro."
+              />
+              <Boton
+                texto="Ver los reportes cercanos"
+                variante="secundario"
+                icono="list-outline"
+                onPress={() => verCercanos(cercanos)}
+              />
+            </View>
+          )}
         </Seccion>
 
         <Seccion
@@ -252,6 +331,21 @@ export function PantallaNuevoReporte() {
           />
         </View>
       </View>
+
+      {enLaHoja && (
+        <HojaDuplicados
+          key={`cercanos-${vecesHoja}`}
+          abierta={hojaAbierta}
+          cercanos={enLaHoja.reportes}
+          tipos={tipos.tipo === 'listo' ? tipos.datos : null}
+          mismoTipo={tipoId !== null}
+          desde={enLaHoja.desde}
+          usuarioId={usuario?.id ?? ''}
+          alCerrar={() => setHojaAbierta(false)}
+          alSumarse={alSumarse}
+          alVerDetalle={verDetalle}
+        />
+      )}
     </ScrollView>
   );
 }
