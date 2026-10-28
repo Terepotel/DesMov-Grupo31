@@ -34,8 +34,11 @@ import { useCambios, useSumarse, type ResultadoSumarse } from './use-detalle';
 type Props = {
   /** El de la ruta: un id (`rep-…`) o un número de seguimiento (`GCHU-…`, el enlace del QR). */
   id: ParametroDeRuta;
-  /** Al pie, debajo de las acciones del vecino: acá van las de gestión del operador (R4.2–R4.5). */
-  acciones?: ReactNode;
+  /**
+   * Al pie, debajo de las acciones del vecino: las de gestión del operador (R4.2–R4.5). Reciben el
+   * reporte cargado y `recargar`, que vuelve a pedirlo (con su historial) sin vaciar la pantalla.
+   */
+  acciones?: (reporte: Reporte, recargar: () => void) => ReactNode;
 };
 
 /** El detalle de un reporte (R2.2–R2.6): igual para los dos roles, salvo los datos de gestión. */
@@ -44,7 +47,7 @@ export function PantallaDetalleReporte({ id, acciones }: Props) {
   const { usuario } = useSesion();
   const esOperador = usuario?.rol === 'operador';
   const cargar = useCallback(() => cargarDetalle(id, esOperador), [id, esOperador]);
-  const { carga, reintentar } = useCarga(cargar);
+  const { carga, reintentar, recargar } = useCarga(cargar);
 
   return (
     <ScrollView
@@ -80,7 +83,11 @@ export function PantallaDetalleReporte({ id, acciones }: Props) {
           </View>
         )}
         {carga.tipo === 'listo' && usuario && (
-          <Detalle datos={carga.datos} usuario={usuario} acciones={acciones} />
+          <Detalle
+            datos={carga.datos}
+            usuario={usuario}
+            acciones={acciones ? (reporte) => acciones(reporte, recargar) : undefined}
+          />
         )}
       </View>
     </ScrollView>
@@ -100,7 +107,7 @@ function Detalle({
 }: {
   datos: DetalleReporte;
   usuario: Usuario;
-  acciones?: ReactNode;
+  acciones?: (reporte: Reporte) => ReactNode;
 }) {
   const { tipo, zona, cuadrillas } = datos;
   const { reporte, resultado, terminado, sumarme } = useSumarse(datos.reporte);
@@ -120,6 +127,7 @@ function Detalle({
     !terminado;
   const original = reporte.duplicadoDe;
   const conQr = reporte.sincronizado && reporte.codigo !== '';
+  const accionesDelOperador = acciones?.(reporte);
 
   return (
     <>
@@ -215,7 +223,7 @@ function Detalle({
         </View>
       )}
 
-      {(conQr || puedeSumarse || resultado.tipo !== 'nada' || acciones) && (
+      {(conQr || puedeSumarse || resultado.tipo !== 'nada' || accionesDelOperador) && (
         <View className="gap-3">
           <ResultadoDeSumarse resultado={resultado} />
           {puedeSumarse && (
@@ -235,7 +243,7 @@ function Detalle({
             />
           )}
           {/* Las acciones de gestión del operador (R4.2–R4.5) entran por `acciones`. */}
-          {acciones}
+          {accionesDelOperador}
         </View>
       )}
 

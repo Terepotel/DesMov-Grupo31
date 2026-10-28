@@ -46,5 +46,10 @@ export function useCarga<T>(cargar: () => Promise<T>) {
     setIntento((n) => n + 1);
   }
 
-  return { carga, reintentar };
+  /** Vuelve a pedir sin vaciar la pantalla: lo que había se ve hasta que llega lo nuevo. */
+  function recargar() {
+    setIntento((n) => n + 1);
+  }
+
+  return { carga, reintentar, recargar };
 }

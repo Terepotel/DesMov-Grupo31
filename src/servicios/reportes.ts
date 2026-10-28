@@ -12,7 +12,7 @@ import type {
 import { distanciaEnMetros, estaEnCaja, type Caja } from '@/utilidades/geo';
 
 import { ErrorApi, pedir, pedirConEstado, USAR_MOCKS } from './api';
-import { copiar, responderLista, responderUno, usuarioIdDeLaSesionMock } from './mock';
+import { ahoraMock, copiar, responderLista, responderUno, usuarioIdDeLaSesionMock } from './mock';
 
 export interface FiltrosDeReportes {
   tipoId?: string;
@@ -234,4 +234,80 @@ export function obtenerBandeja(filtros: FiltrosDeBandeja = {}): Promise<Respuest
   return pedir('/bandeja', {
     consulta: { zonaId, tipoId, estado: estados?.join(','), pagina, porPagina },
   });
+}
+
+/**
+ * A qué estados puede pasar un reporte con `PATCH /estado` (máquina de estados de la API, D3).
+ * «Asignado a cuadrilla» no está: se llega sólo asignando una cuadrilla (R4.3).
+ */
+export const DESTINOS_POR_ESTADO: Record<EstadoReporte, readonly EstadoReporte[]> = {
+  recibido: ['en_revision', 'rechazado'],
+  en_revision: ['rechazado'],
+  asignado: ['resuelto', 'en_revision', 'rechazado'],
+  resuelto: [],
+  rechazado: [],
+};
+
+/** La API recorta el comentario a este largo (DECISIONS P18). */
+export const LARGO_MAXIMO_COMENTARIO = 1000;
+
+/** Como lo guarda la API: sin espacios de más, `""` pasa a `null`. */
+export function limpiarComentario(comentario: string | null | undefined): string | null {
+  const texto = (comentario ?? '').replace(/\s+/g, ' ').trim();
+  return texto === '' ? null : texto;
+}
+
+/**
+ * Sólo operadores (R4.2): cambia el estado y deja un `CambioDeEstado` con el comentario. Rechazar
+ * exige comentario (`MOTIVO_REQUERIDO`); un paso que no está en la máquina es `TRANSICION_INVALIDA`.
+ * Devuelve el reporte actualizado.
+ */
+export async function cambiarEstado(
+  id: string,
+  { estado, comentario }: { estado: EstadoReporte; comentario?: string | null },
+): Promise<Reporte> {
+  if (USAR_MOCKS) {
+    const operadorId = usuarioIdDeLaSesionMock();
+    const operador = usuariosMock.find((u) => u.id === operadorId);
+    if (operador?.rol !== 'operador') {
+      throw new ErrorApi('SIN_PERMISO', 'Esta parte es sólo para operadores.', 403);
+    }
+    const reporte = reportesMock.find((r) => r.id === id);
+    const noEncontrado = new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404);
+    await responderUno(reporte, noEncontrado);
+    if (!reporte) throw noEncontrado;
+    // Mismo orden de reglas que la API: transición, después motivo.
+    if (estado === 'asignado') {
+      throw new ErrorApi('CUADRILLA_REQUERIDA', 'Para asignar, elegí una cuadrilla.', 422);
+    }
+    if (!DESTINOS_POR_ESTADO[reporte.estado].includes(estado)) {
+      throw new ErrorApi(
+        'TRANSICION_INVALIDA',
+        'Ese cambio de estado no es posible desde el estado actual.',
+        422,
+      );
+    }
+    const texto = limpiarComentario(comentario);
+    if (estado === 'rechazado' && texto === null) {
+      throw new ErrorApi('MOTIVO_REQUERIDO', 'Contá por qué se rechaza el reporte.', 422);
+    }
+    // Se trabaja sobre el del mock (no una copia): el cambio tiene que quedar.
+    reporte.estado = estado;
+    const numero = cambiosDeEstadoMock.filter((c) => c.reporteId === id).length + 1;
+    cambiosDeEstadoMock.push({
+      id: `cam-${id}-${numero}`,
+      reporteId: id,
+      estado,
+      comentario: texto,
+      operadorId,
+      fechaHora: ahoraMock(),
+    });
+    return copiar(reporte);
+  }
+
+  const respuesta = await pedir<RespuestaUno<Reporte>>(
+    `/reportes/${encodeURIComponent(id)}/estado`,
+    { metodo: 'PATCH', cuerpo: { estado, comentario: limpiarComentario(comentario) } },
+  );
+  return respuesta.datos;
 }

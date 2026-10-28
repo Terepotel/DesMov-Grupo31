@@ -27,6 +27,16 @@ export function usuarioIdDeLaSesionMock() {
   return token?.startsWith(PREFIJO_TOKEN) ? token.slice(PREFIJO_TOKEN.length) : null;
 }
 
+/** El instante actual como lo escribe la API: ISO con la zona del teléfono (`…T10:22:00-03:00`). */
+export function ahoraMock() {
+  const ahora = new Date();
+  const desfase = -ahora.getTimezoneOffset();
+  const signo = desfase >= 0 ? '+' : '-';
+  const dos = (n: number) => String(Math.abs(n)).padStart(2, '0');
+  const local = new Date(ahora.getTime() + desfase * 60_000).toISOString().slice(0, 19);
+  return `${local}${signo}${dos(Math.trunc(desfase / 60))}:${dos(desfase % 60)}`;
+}
+
 export function copiar<T>(dato: T): T {
   return JSON.parse(JSON.stringify(dato)) as T;
 }
