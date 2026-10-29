@@ -65,7 +65,8 @@ export function Boton({
       ) : (
         <View className="flex-row items-center gap-2">
           {icono && <Icono nombre={icono} className={estilo.claseColor} />}
-          <Texto variante="boton" color={estilo.color}>
+          {/* Si el rótulo no entra en una línea, se parte centrado y no se corre a un lado. */}
+          <Texto variante="boton" color={estilo.color} className="shrink text-center">
             {texto}
           </Texto>
         </View>

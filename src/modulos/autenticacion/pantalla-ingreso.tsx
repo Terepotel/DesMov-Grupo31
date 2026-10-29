@@ -76,7 +76,7 @@ export function PantallaIngreso() {
 
       <Texto variante="secundario">Si es la primera vez que entrás, creá tu cuenta.</Texto>
       <Boton
-        texto="Crear una cuenta"
+        texto="Crear cuenta"
         variante="secundario"
         icono="person-add-outline"
         disabled={enviando}
