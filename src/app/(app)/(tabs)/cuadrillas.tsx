@@ -1,10 +1,5 @@
-import { PantallaPendiente } from '@/componentes/pantalla-pendiente';
+import { PantallaCuadrillas } from '@/modulos/cuadrillas/pantalla-cuadrillas';
 
-export default function PantallaCuadrillas() {
-  return (
-    <PantallaPendiente
-      titulo="Cuadrillas"
-      descripcion="Las cuadrillas de cada zona y su especialidad."
-    />
-  );
+export default function RutaCuadrillas() {
+  return <PantallaCuadrillas />;
 }
