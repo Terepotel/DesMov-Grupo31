@@ -18,15 +18,6 @@ export function guardarEnDocumentos(uri: string, carpeta: string, extensionPorDe
   return nuevo.uri;
 }
 
-/** Para retomar un borrador: si el archivo ya no está, no se ofrece. */
-export function existeArchivoLocal(uri: string) {
-  try {
-    return new File(uri).exists;
-  } catch {
-    return false;
-  }
-}
-
 /** Cuando ya no hace falta: se reemplazó, se descartó el reporte o ya se subió. */
 export function borrarArchivoLocal(uri: string) {
   try {

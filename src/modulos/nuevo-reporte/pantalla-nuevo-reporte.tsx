@@ -8,7 +8,6 @@ import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { CampoTexto } from '@/componentes/ui/campo-texto';
 import { FichaTipo, FichaTipoCargando } from '@/componentes/ui/ficha-tipo';
-import { HojaInferior } from '@/componentes/ui/hoja-inferior';
 import { Icono } from '@/componentes/ui/icono';
 import { Texto } from '@/componentes/ui/texto';
 import { useSesion } from '@/modulos/autenticacion/contexto';
@@ -18,16 +17,11 @@ import { borrarNotaDeVoz, type NotaGrabada } from '@/servicios/notas-de-voz';
 import { crearReporte } from '@/servicios/reportes';
 import { direccionDesdeCoordenadas } from '@/servicios/ubicacion';
 import type { Coordenadas, Reporte, TipoDeReporte } from '@/tipos';
-import { ahoraIso, formatearFechaHora } from '@/utilidades/fechas';
+import { ahoraIso } from '@/utilidades/fechas';
 import { nuevoId } from '@/utilidades/reportes';
 import { useCarga } from '@/utilidades/use-carga';
 
-import { borrarBorrador, guardarBorrador, leerBorrador, tieneContenido } from './borrador';
-import {
-  limpiarFotosDelReporte,
-  restaurarFotosDelReporte,
-  useFotosDelReporte,
-} from './fotos-del-reporte';
+import { limpiarFotosDelReporte, useFotosDelReporte } from './fotos-del-reporte';
 import { HojaDuplicados } from './hoja-duplicados';
 import { ReporteEnviado } from './reporte-enviado';
 import { revisarUbicacion } from './revisar-ubicacion';
@@ -36,7 +30,6 @@ import { SeccionNotaDeVoz } from './seccion-nota-de-voz';
 import { SeccionUbicacion } from './seccion-ubicacion';
 import {
   limpiarUbicacionDelReporte,
-  restaurarUbicacionDelReporte,
   tomarUbicacionDelGps,
   useUbicacionDelReporte,
   type UbicacionDelReporte,
@@ -59,38 +52,23 @@ const cargarTipos = async () => (await obtenerTiposDeReporte()).datos;
  */
 export function PantallaNuevoReporte() {
   const margenes = useSafeAreaInsets();
-  const { usuario } = useSesion();
-  const usuarioId = usuario?.id ?? '';
-  // R1.10: lo que dejó a medio hacer. Se restaura antes de leer los stores, así el primer render ya
-  // lo muestra y no se guarda un formulario vacío encima.
-  const [retomado] = useState(() => {
-    const borrador = usuarioId ? leerBorrador(usuarioId) : null;
-    if (borrador) {
-      restaurarUbicacionDelReporte(borrador.ubicacion);
-      restaurarFotosDelReporte(borrador.fotos);
-    } else {
-      limpiarUbicacionDelReporte();
-      limpiarFotosDelReporte();
-    }
-    return borrador;
-  });
   const ubicacion = useUbicacionDelReporte();
   const fotos = useFotosDelReporte();
   const { carga: tipos, reintentar: reintentarTipos } = useCarga(cargarTipos);
 
   // El mismo id en cada reintento: si el primer envío llegó pero se cortó la respuesta, la API
   // devuelve el que ya tiene en vez de crear otro.
-  const [id] = useState(() => retomado?.id ?? nuevoId('rep'));
-  const [tipoId, setTipoId] = useState<string | null>(retomado?.tipoId ?? null);
-  const [descripcion, setDescripcion] = useState(retomado?.descripcion ?? '');
-  const [nota, setNota] = useState<NotaGrabada | null>(retomado?.nota ?? null);
-  const [descartando, setDescartando] = useState(false);
+  const [id] = useState(() => nuevoId('rep'));
+  const [tipoId, setTipoId] = useState<string | null>(null);
+  const [descripcion, setDescripcion] = useState('');
+  const [nota, setNota] = useState<NotaGrabada | null>(null);
   const [grabando, setGrabando] = useState(false);
   const [mostrarErrores, setMostrarErrores] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [errorDeEnvio, setErrorDeEnvio] = useState<string | null>(null);
   const [enviado, setEnviado] = useState<Reporte | null>(null);
   const [sumado, setSumado] = useState<{ reporte: Reporte; yaEstaba: boolean } | null>(null);
+  const { usuario } = useSesion();
   const cercanos = useCercanos(ubicacion.coordenadas, tipoId);
   // Lo que muestra la hoja: se cierra sin borrarlo, así la animación de salida tiene qué mostrar.
   const [enLaHoja, setEnLaHoja] = useState<Cercanos | null>(null);
@@ -109,40 +87,12 @@ export function PantallaNuevoReporte() {
   const scroll = useRef<ScrollView>(null);
   const posiciones = useRef<Partial<Record<CampoDelReporte, number>>>({});
 
-  // R1.4: la ubicación sale sola del GPS apenas se abre el formulario. Si el borrador ya tenía un
-  // punto, se queda ese: es donde estaba el problema, aunque el vecino ahora esté en otro lado.
+  // R1.4: la ubicación sale sola del GPS apenas se abre el formulario.
   useEffect(() => {
-    if (!retomado?.ubicacion.coordenadas) void tomarUbicacionDelGps();
-  }, [retomado]);
-
-  // Se guarda un poco después de cada cambio (al escribir no se guarda letra por letra) y, si sale
-  // de la pantalla antes, al salir. Enviado, sumado o descartado, ya no se guarda más.
-  const terminado = useRef(false);
-  const pendiente = useRef<(() => void) | null>(null);
-  useEffect(() => {
-    if (terminado.current || !usuarioId) return;
-    const { coordenadas, direccion, origen, direccionEscrita } = ubicacion;
-    const datos = {
-      tipoId,
-      descripcion,
-      nota,
-      fotos,
-      ubicacion: { coordenadas, direccion, origen, direccionEscrita },
-    };
-    const guardar = () => {
-      pendiente.current = null;
-      if (terminado.current) return;
-      if (tieneContenido(datos)) {
-        void guardarBorrador(usuarioId, { ...datos, id, actualizadoEn: ahoraIso() });
-      } else {
-        void borrarBorrador(usuarioId);
-      }
-    };
-    pendiente.current = guardar;
-    const espera = setTimeout(guardar, 400);
-    return () => clearTimeout(espera);
-  }, [usuarioId, id, tipoId, descripcion, nota, fotos, ubicacion]);
-  useEffect(() => () => pendiente.current?.(), []);
+    limpiarUbicacionDelReporte();
+    limpiarFotosDelReporte();
+    void tomarUbicacionDelGps();
+  }, []);
 
   // R1.8 y R3.4: apenas hay un punto con reportes cerca, vibra y pregunta si es el mismo.
   useEffect(() => {
@@ -164,7 +114,6 @@ export function PantallaNuevoReporte() {
     }, []),
   );
 
-  const conContenido = tieneContenido({ tipoId, descripcion, nota, fotos, ubicacion });
   const faltantes = validarReporte({
     tipoId,
     fotos,
@@ -234,16 +183,12 @@ export function PantallaNuevoReporte() {
   }
 
   function limpiar() {
-    terminado.current = true;
-    pendiente.current = null;
-    void borrarBorrador(usuarioId);
     limpiarUbicacionDelReporte();
     limpiarFotosDelReporte();
     borrarNota();
   }
 
   function descartar() {
-    setDescartando(false);
     limpiar();
     router.back();
   }
@@ -281,13 +226,11 @@ export function PantallaNuevoReporte() {
       contentContainerStyle={{ paddingTop: margenes.top + 8, paddingBottom: margenes.bottom + 48 }}>
       <View className="w-full max-w-lg gap-8 self-center px-6">
         <View className="items-start gap-2">
-          {/* Volver no descarta: lo que puso queda en el borrador (R1.10). */}
           <Pressable
-            onPress={() => router.back()}
+            onPress={descartar}
             className="-ml-2 min-h-toque flex-row items-center gap-2 px-2 active:opacity-70"
             accessibilityRole="button"
-            accessibilityLabel="Volver"
-            accessibilityHint="El reporte queda guardado para seguirlo después">
+            accessibilityLabel="Volver sin enviar">
             <Icono nombre="arrow-back-outline" className="text-primario" />
             <Texto variante="cuerpo-fuerte" color="primario">
               Volver
@@ -296,19 +239,7 @@ export function PantallaNuevoReporte() {
           <Texto variante="titulo-pantalla" accessibilityRole="header">
             Nuevo reporte
           </Texto>
-          <Texto variante="secundario">
-            Si salís sin enviar, queda guardado y lo seguís cuando vuelvas.
-          </Texto>
         </View>
-
-        {retomado && (
-          <Aviso
-            tono="atencion"
-            icono="document-text-outline"
-            titulo="Seguís con el reporte que habías empezado."
-            detalle={`Lo dejaste el ${formatearFechaHora(retomado.actualizadoEn)}. Si preferís empezar de cero, descartalo al final.`}
-          />
-        )}
 
         <Seccion
           titulo="¿Qué pasa?"
@@ -398,40 +329,8 @@ export function PantallaNuevoReporte() {
             cargando={enviando}
             onPress={enviar}
           />
-          {conContenido && (
-            <Boton
-              texto="Descartar el reporte"
-              variante="peligro"
-              icono="trash-outline"
-              disabled={enviando}
-              onPress={() => setDescartando(true)}
-            />
-          )}
         </View>
       </View>
-
-      <HojaInferior
-        abierta={descartando}
-        titulo="¿Descartar el reporte?"
-        alCerrar={() => setDescartando(false)}>
-        <View className="gap-6">
-          <Texto>
-            Se borran las fotos, la nota de voz y lo que escribiste. No se puede deshacer.
-          </Texto>
-          <Boton
-            texto="Descartar el reporte"
-            variante="peligro"
-            icono="trash-outline"
-            onPress={descartar}
-          />
-          <Boton
-            texto="Seguir con el reporte"
-            variante="secundario"
-            icono="arrow-back-outline"
-            onPress={() => setDescartando(false)}
-          />
-        </View>
-      </HojaInferior>
 
       {enLaHoja && (
         <HojaDuplicados
@@ -441,7 +340,7 @@ export function PantallaNuevoReporte() {
           tipos={tipos.tipo === 'listo' ? tipos.datos : null}
           mismoTipo={tipoId !== null}
           desde={enLaHoja.desde}
-          usuarioId={usuarioId}
+          usuarioId={usuario?.id ?? ''}
           alCerrar={() => setHojaAbierta(false)}
           alSumarse={alSumarse}
           alVerDetalle={verDetalle}

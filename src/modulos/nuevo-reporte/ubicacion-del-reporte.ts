@@ -1,7 +1,7 @@
 // Dónde está el problema que se va a reportar. Vive fuera de la pantalla porque «Corregir en el
 // mapa» es otra ruta y Expo Router no devuelve valores al volver: la pantalla de corrección escribe
-// acá y el formulario lo lee con `useUbicacionDelReporte`. Se guarda con el borrador (R1.10) y se
-// restaura con `restaurarUbicacionDelReporte`.
+// acá y el formulario lo lee con `useUbicacionDelReporte`. Cuando exista el borrador (R1.10), este
+// estado pasa a ser parte de él.
 
 import { useSyncExternalStore } from 'react';
 
@@ -52,15 +52,6 @@ export function useUbicacionDelReporte() {
 /** Al empezar un reporte nuevo (o al descartarlo). */
 export function limpiarUbicacionDelReporte() {
   actual = VACIA;
-  oyentes.forEach((oyente) => oyente());
-}
-
-/** Lo que se guarda en el borrador: el estado del GPS no, porque se vuelve a pedir si hace falta. */
-export type UbicacionGuardada = Omit<UbicacionDelReporte, 'gps'>;
-
-/** Al retomar el borrador (R1.10). */
-export function restaurarUbicacionDelReporte(guardada: UbicacionGuardada) {
-  actual = { ...guardada, gps: guardada.origen === 'gps' ? 'ok' : 'pendiente' };
   oyentes.forEach((oyente) => oyente());
 }
 
