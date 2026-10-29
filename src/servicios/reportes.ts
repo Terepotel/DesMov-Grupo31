@@ -4,6 +4,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 
 import {
   cambiosDeEstadoMock,
+  cuadrillasMock,
   reportesMock,
   tiposDeReporteMock,
   usuariosMock,
@@ -464,6 +465,75 @@ export async function cambiarEstado(
   const respuesta = await pedir<RespuestaUno<Reporte>>(
     `/reportes/${encodeURIComponent(id)}/estado`,
     { metodo: 'PATCH', cuerpo: { estado, comentario: limpiarComentario(comentario) } },
+  );
+  return respuesta.datos;
+}
+
+/**
+ * Desde qué estados se puede asignar (o reasignar) una cuadrilla con `PATCH /cuadrilla` (máquina de
+ * estados de la API, D3): en revisión pasa a asignado; ya asignado, cambia de cuadrilla.
+ */
+export const ORIGENES_DE_ASIGNACION: readonly EstadoReporte[] = ['en_revision', 'asignado'];
+
+/**
+ * Sólo operadores (R4.3): asigna una cuadrilla y pasa el reporte a `asignado`, con un
+ * `CambioDeEstado` (también al reasignar, API R14). La cuadrilla tiene que estar activa
+ * (`CUADRILLA_INACTIVA`) y ser de la zona del reporte (`CUADRILLA_DE_OTRA_ZONA`); desde otro estado
+ * que no sea en revisión o asignado, `TRANSICION_INVALIDA`. Devuelve el reporte actualizado.
+ */
+export async function asignarCuadrilla(
+  id: string,
+  { cuadrillaId, comentario }: { cuadrillaId: string; comentario?: string | null },
+): Promise<Reporte> {
+  if (USAR_MOCKS) {
+    const operadorId = usuarioIdDeLaSesionMock();
+    const operador = usuariosMock.find((u) => u.id === operadorId);
+    if (operador?.rol !== 'operador') {
+      throw new ErrorApi('SIN_PERMISO', 'Esta parte es sólo para operadores.', 403);
+    }
+    const reporte = reportesMock.find((r) => r.id === id);
+    const noEncontrado = new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404);
+    await responderUno(reporte, noEncontrado);
+    if (!reporte) throw noEncontrado;
+    // Mismo orden de reglas que la API (DECISIONS P17).
+    if (cuadrillaId.trim() === '') {
+      throw new ErrorApi('CUADRILLA_REQUERIDA', 'Para asignar, elegí una cuadrilla.', 422);
+    }
+    if (!ORIGENES_DE_ASIGNACION.includes(reporte.estado)) {
+      throw new ErrorApi(
+        'TRANSICION_INVALIDA',
+        'Ese cambio de estado no es posible desde el estado actual.',
+        422,
+      );
+    }
+    const cuadrilla = cuadrillasMock.find((c) => c.id === cuadrillaId);
+    if (!cuadrilla) {
+      throw new ErrorApi('CUADRILLA_NO_ENCONTRADA', 'No existe esa cuadrilla.', 422);
+    }
+    if (!cuadrilla.activa) {
+      throw new ErrorApi('CUADRILLA_INACTIVA', 'Esa cuadrilla no está activa.', 422);
+    }
+    if (cuadrilla.zonaId !== reporte.zonaId) {
+      throw new ErrorApi('CUADRILLA_DE_OTRA_ZONA', 'Esa cuadrilla trabaja en otra zona.', 422);
+    }
+    // Se trabaja sobre el del mock (no una copia): el cambio tiene que quedar.
+    reporte.estado = 'asignado';
+    reporte.cuadrillaId = cuadrilla.id;
+    const numero = cambiosDeEstadoMock.filter((c) => c.reporteId === id).length + 1;
+    cambiosDeEstadoMock.push({
+      id: `cam-${id}-${numero}`,
+      reporteId: id,
+      estado: 'asignado',
+      comentario: limpiarComentario(comentario),
+      operadorId,
+      fechaHora: ahoraMock(),
+    });
+    return copiar(reporte);
+  }
+
+  const respuesta = await pedir<RespuestaUno<Reporte>>(
+    `/reportes/${encodeURIComponent(id)}/cuadrilla`,
+    { metodo: 'PATCH', cuerpo: { cuadrillaId, comentario: limpiarComentario(comentario) } },
   );
   return respuesta.datos;
 }

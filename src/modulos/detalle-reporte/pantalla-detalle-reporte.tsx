@@ -19,6 +19,7 @@ import { useSesion } from '@/modulos/autenticacion/contexto';
 import type { CambioDeEstado, Reporte, Usuario } from '@/tipos';
 import { formatearFecha } from '@/utilidades/fechas';
 import { textoAdhesiones } from '@/utilidades/reportes';
+import { describirCuadrilla } from '@/utilidades/cuadrillas';
 import { useCarga } from '@/utilidades/use-carga';
 
 import {
@@ -342,5 +343,5 @@ function Dato({ rotulo, valor }: { rotulo: string; valor: string }) {
 function nombreDeCuadrilla(reporte: Reporte, cuadrillas: DetalleReporte['cuadrillas']): string {
   if (!reporte.cuadrillaId) return 'sin asignar';
   const cuadrilla = cuadrillas?.find((c) => c.id === reporte.cuadrillaId);
-  return cuadrilla ? `${cuadrilla.nombre} · ${cuadrilla.especialidad}` : 'asignada';
+  return cuadrilla ? describirCuadrilla(cuadrilla) : 'asignada';
 }
