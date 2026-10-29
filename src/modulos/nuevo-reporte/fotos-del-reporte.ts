@@ -1,6 +1,7 @@
 // Las fotos del problema que se va a reportar: la obligatoria y una segunda opcional (R1.3, P16).
 // Viven fuera de la pantalla por lo mismo que la ubicación: «Sacar la foto» es otra ruta y Expo
-// Router no devuelve valores al volver. Cuando exista el borrador (R1.10), pasan a ser parte de él.
+// Router no devuelve valores al volver. Se guardan con el borrador (R1.10): los archivos ya están en
+// `<documentos>/fotos/`, así que sólo se guarda la lista.
 
 import { useSyncExternalStore } from 'react';
 
@@ -45,6 +46,11 @@ export function quitarFotoDelReporte(id: string) {
   if (!foto) return;
   borrarFoto(foto);
   emitir(actual.filter((f) => f.id !== id));
+}
+
+/** Al retomar el borrador (R1.10). No borra nada: son las mismas fotos. */
+export function restaurarFotosDelReporte(fotos: FotoDelReporte[]) {
+  emitir(fotos.slice(0, MAX_FOTOS_DEL_PROBLEMA));
 }
 
 /** Al empezar un reporte nuevo, al descartarlo o después de enviarlo (ya están en la API). */
