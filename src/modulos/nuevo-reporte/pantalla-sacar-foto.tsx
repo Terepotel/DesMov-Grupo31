@@ -10,17 +10,28 @@ import { Icono } from '@/componentes/ui/icono';
 import { Texto } from '@/componentes/ui/texto';
 import { CALIDAD_FOTO, guardarFoto } from '@/servicios/fotos';
 
+import { entregarFotoDelArreglo } from '@/modulos/bandeja/foto-del-arreglo-pendiente';
+
 import { AvisoSinCamara } from './aviso-sin-camara';
 import { ponerFotoDelReporte } from './fotos-del-reporte';
 
+export type ParametrosSacarFoto = {
+  /** Del nuevo reporte: 0 la primera foto, 1 la segunda. */
+  lugar?: string;
+  /** `arreglo`: la foto del arreglo que sube el operador desde el detalle (R4.5). */
+  destino?: 'arreglo';
+};
+
 /**
- * «Sacar la foto» del nuevo reporte (R1.2): la cámara y un solo botón. La foto queda en
- * `fotos-del-reporte`, en el `lugar` que manda el formulario (0 la primera, 1 la segunda), y se
- * vuelve al formulario.
+ * «Sacar la foto»: la cámara y un solo botón. En el nuevo reporte (R1.2) la foto queda en
+ * `fotos-del-reporte`, en el `lugar` que manda el formulario (0 la primera, 1 la segunda). Con
+ * `destino=arreglo`, queda en `foto-del-arreglo-pendiente` y la sube el detalle (R4.5). En los dos
+ * casos se vuelve a la pantalla anterior.
  */
 export function PantallaSacarFoto() {
-  const { lugar } = useLocalSearchParams<{ lugar?: string }>();
+  const { lugar, destino } = useLocalSearchParams<ParametrosSacarFoto>();
   const indice = lugar === '1' ? 1 : 0;
+  const esArreglo = destino === 'arreglo';
   const [permiso, pedirPermiso, revisarPermiso] = useCameraPermissions();
   const camara = useRef<CameraView>(null);
   const [lista, setLista] = useState(false);
@@ -41,7 +52,8 @@ export function PantallaSacarFoto() {
     setError(null);
     try {
       const foto = await camara.current.takePictureAsync({ quality: CALIDAD_FOTO });
-      ponerFotoDelReporte(indice, guardarFoto(foto.uri));
+      if (esArreglo) entregarFotoDelArreglo(guardarFoto(foto.uri));
+      else ponerFotoDelReporte(indice, guardarFoto(foto.uri));
       router.back();
     } catch {
       setError('sacar');
@@ -64,7 +76,7 @@ export function PantallaSacarFoto() {
             </Texto>
           </Pressable>
           <Texto variante="titulo-pantalla" accessibilityRole="header">
-            {indice === 1 ? 'Segunda foto' : 'Foto del problema'}
+            {esArreglo ? 'Foto del arreglo' : indice === 1 ? 'Segunda foto' : 'Foto del problema'}
           </Texto>
         </View>
 
@@ -75,6 +87,7 @@ export function PantallaSacarFoto() {
           <AvisoSinCamara
             puedePreguntar={permiso.canAskAgain}
             alPedirPermiso={() => void pedirPermiso()}
+            motivo={esArreglo ? 'arreglo' : 'reporte'}
           />
         ) : (
           <>
@@ -92,7 +105,9 @@ export function PantallaSacarFoto() {
               />
             </View>
 
-            <Texto variante="secundario">Que se vea bien el problema.</Texto>
+            <Texto variante="secundario">
+              {esArreglo ? 'Que se vea cómo quedó.' : 'Que se vea bien el problema.'}
+            </Texto>
 
             {error === 'sacar' && (
               <Aviso tono="error" titulo="No pudimos sacar la foto." detalle="Probá de nuevo." />

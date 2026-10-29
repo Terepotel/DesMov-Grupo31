@@ -8,20 +8,34 @@ type Props = {
   puedePreguntar: boolean;
   /** Para volver a pedir el permiso desde acá. Sin esto, se pide al tocar «Sacar una foto». */
   alPedirPermiso?: () => void;
+  /** Para qué se pide: la foto del reporte del vecino (sin ella no hay reporte) o la del arreglo. */
+  motivo?: 'reporte' | 'arreglo';
+};
+
+const textos = {
+  reporte: {
+    titulo: 'Necesitamos la cámara para que puedas reportar.',
+    detalle: 'Sin foto no hay reporte.',
+  },
+  arreglo: {
+    titulo: 'Necesitamos la cámara para la foto del arreglo.',
+    detalle: 'También podés elegirla de la galería.',
+  },
 };
 
 /** Sin permiso de cámara no hay reporte (NF3): se explica con buenos modos y se ofrece la salida. */
-export function AvisoSinCamara({ puedePreguntar, alPedirPermiso }: Props) {
+export function AvisoSinCamara({ puedePreguntar, alPedirPermiso, motivo = 'reporte' }: Props) {
+  const texto = textos[motivo];
   return (
     <View className="gap-3">
       <Aviso
         tono="atencion"
         icono="camera-outline"
-        titulo="Necesitamos la cámara para que puedas reportar."
+        titulo={texto.titulo}
         detalle={
           puedePreguntar
-            ? 'Sin foto no hay reporte. Cuando el teléfono te pregunte, tocá «Permitir».'
-            : 'Sin foto no hay reporte. Podés darle permiso desde la configuración del teléfono.'
+            ? `${texto.detalle} Cuando el teléfono te pregunte, tocá «Permitir».`
+            : `${texto.detalle} Podés darle permiso desde la configuración del teléfono.`
         }
       />
       {puedePreguntar ? (
