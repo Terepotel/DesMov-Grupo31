@@ -7,6 +7,7 @@ import { DESTINOS_POR_ESTADO, ORIGENES_DE_ASIGNACION } from '@/servicios/reporte
 import type { Reporte } from '@/tipos';
 
 import { accionesDeEstado, describirCambio } from './acciones-de-estado';
+import { admiteFotoDelArreglo, cuentaFotosDelArreglo, FotoDelArreglo } from './foto-del-arreglo';
 import { HojaAsignarCuadrilla } from './hoja-asignar-cuadrilla';
 import { HojaCambioDeEstado } from './hoja-cambio-de-estado';
 import { HojaMarcarDuplicado } from './hoja-marcar-duplicado';
@@ -23,11 +24,12 @@ type Resultado =
 type Hoja = 'estado' | 'cuadrilla' | 'duplicado' | null;
 
 /**
- * Las acciones de gestión del operador al pie del detalle (R4.2 a R4.4). Un botón por acción, y
+ * Las acciones de gestión del operador al pie del detalle (R4.2 a R4.5). Un botón por acción, y
  * cada una abre una hoja donde se elige, se explica y se confirma: así un toque de más no cambia
  * nada. «Cambiar el estado» va por `PATCH /estado`; «Asignar a una cuadrilla» por `PATCH /cuadrilla`
  * (el único camino a «Asignado»); «Marcar como duplicado» por `POST /duplicado`, que también rechaza
- * el reporte. Un reporte cerrado no tiene acciones.
+ * el reporte; «Subir la foto del arreglo» por `POST /fotos` (en asignado o resuelto, hasta tres).
+ * Un reporte rechazado no tiene acciones.
  */
 export function AccionesOperador({ reporte, alCambiar }: Props) {
   const [abierta, setAbierta] = useState<Hoja>(null);
@@ -42,7 +44,18 @@ export function AccionesOperador({ reporte, alCambiar }: Props) {
     reporte.duplicadoDe === null &&
     DESTINOS_POR_ESTADO[reporte.estado].includes('rechazado');
 
-  if (acciones.length === 0 && !puedeAsignarse && !puedeSerDuplicado && resultado.tipo === 'nada') {
+  const puedeSubirFoto = admiteFotoDelArreglo(reporte);
+  // Recién resuelto y sin foto: se recuerda que la foto del arreglo se sube acá (R4.5).
+  const sugerirFoto =
+    reporte.estado === 'resuelto' && puedeSubirFoto && cuentaFotosDelArreglo(reporte) === 0;
+
+  if (
+    acciones.length === 0 &&
+    !puedeAsignarse &&
+    !puedeSerDuplicado &&
+    !puedeSubirFoto &&
+    resultado.tipo === 'nada'
+  ) {
     return null;
   }
 
@@ -58,7 +71,13 @@ export function AccionesOperador({ reporte, alCambiar }: Props) {
 
   return (
     <View className="gap-3">
-      {resultado.tipo === 'cambiado' && <Aviso tono="exito" titulo={resultado.mensaje} />}
+      {resultado.tipo === 'cambiado' && (
+        <Aviso
+          tono="exito"
+          titulo={resultado.mensaje}
+          detalle={sugerirFoto ? 'Si tenés una foto de cómo quedó, subila acá abajo.' : undefined}
+        />
+      )}
       {resultado.tipo === 'error' && (
         <Aviso
           tono="error"
@@ -87,6 +106,23 @@ export function AccionesOperador({ reporte, alCambiar }: Props) {
           variante="secundario"
           icono="git-merge-outline"
           onPress={() => abrir('duplicado')}
+        />
+      )}
+      {puedeSubirFoto && (
+        <FotoDelArreglo
+          reporte={reporte}
+          alSubir={(actualizado) => {
+            const cuantas = cuentaFotosDelArreglo(actualizado);
+            setResultado({
+              tipo: 'cambiado',
+              mensaje:
+                cuantas === 1
+                  ? 'La foto del arreglo quedó en el reporte. El vecino la va a ver.'
+                  : `Ya hay ${cuantas} fotos del arreglo en el reporte.`,
+            });
+            alCambiar();
+          }}
+          alDesactualizarse={desactualizado}
         />
       )}
       <HojaCambioDeEstado

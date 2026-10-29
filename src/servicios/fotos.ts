@@ -24,6 +24,9 @@ export type ResultadoPermiso =
 /** Fotos del problema por reporte (P16): la API rechaza la tercera (R1). */
 export const MAX_FOTOS_DEL_PROBLEMA = 2;
 
+/** Fotos del arreglo por reporte (P16, API R15): la cuarta es `VALIDACION_FALLIDA`. */
+export const MAX_FOTOS_DEL_ARREGLO = 3;
+
 // La API acepta fotos de hasta 5 MB: con 0.7 una foto de celular queda muy por debajo.
 export const CALIDAD_FOTO = 0.7;
 

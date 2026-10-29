@@ -15,10 +15,11 @@ export default function AppLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="reporte/[id]" />
+        {/* La cámara la usan los dos: el vecino para el problema, el operador para el arreglo. */}
+        <Stack.Screen name="sacar-foto" />
         <Stack.Protected guard={usuario?.rol === 'vecino'}>
           <Stack.Screen name="nuevo-reporte" />
           <Stack.Screen name="corregir-ubicacion" />
-          <Stack.Screen name="sacar-foto" />
         </Stack.Protected>
       </Stack>
     </>

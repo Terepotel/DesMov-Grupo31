@@ -21,7 +21,7 @@ import type {
 import { distanciaEnMetros, estaDentroDe, estaEnCaja, type Caja } from '@/utilidades/geo';
 
 import { ErrorApi, pedir, pedirConEstado, USAR_MOCKS } from './api';
-import { MAX_FOTOS_DEL_PROBLEMA, type FotoElegida } from './fotos';
+import { MAX_FOTOS_DEL_ARREGLO, MAX_FOTOS_DEL_PROBLEMA, type FotoElegida } from './fotos';
 import type { NotaGrabada } from './notas-de-voz';
 import {
   ahoraMock,
@@ -404,6 +404,65 @@ export const DESTINOS_POR_ESTADO: Record<EstadoReporte, readonly EstadoReporte[]
   resuelto: [],
   rechazado: [],
 };
+
+/** Estados en los que la API acepta una foto del arreglo (R15). */
+export const ESTADOS_CON_FOTO_DEL_ARREGLO: readonly EstadoReporte[] = ['asignado', 'resuelto'];
+
+/** Lo que se sube con `POST /reportes/:id/fotos`: el `id` lo pone el teléfono y se repite al reintentar. */
+export type NuevaFotoDelArreglo = FotoElegida & { id: string };
+
+/**
+ * Sólo operadores (R4.5): sube la foto con `POST /archivos` y la agrega al reporte con
+ * `momento: "arreglo"`. La API la acepta en `asignado` o `resuelto` (`ESTADO_NO_ADMITE_FOTO`) y hasta
+ * tres (`VALIDACION_FALLIDA`); mandar la misma `id` dos veces no la duplica. Devuelve el reporte
+ * actualizado.
+ */
+export async function subirFotoDelArreglo(
+  reporteId: string,
+  foto: NuevaFotoDelArreglo,
+): Promise<Reporte> {
+  if (USAR_MOCKS) return subirFotoDelArregloMock(reporteId, foto);
+
+  const url = await subirArchivo(foto.uri);
+  const respuesta = await pedir<RespuestaUno<Reporte>>(
+    `/reportes/${encodeURIComponent(reporteId)}/fotos`,
+    { metodo: 'POST', cuerpo: { id: foto.id, url } },
+  );
+  return respuesta.datos;
+}
+
+// Mismo orden de reglas que la API (DECISIONS P20): 404, id repetido, estado, tope de tres.
+async function subirFotoDelArregloMock(
+  reporteId: string,
+  foto: NuevaFotoDelArreglo,
+): Promise<Reporte> {
+  const operador = usuariosMock.find((u) => u.id === usuarioIdDeLaSesionMock());
+  if (operador?.rol !== 'operador') {
+    throw new ErrorApi('SIN_PERMISO', 'Esta parte es sólo para operadores.', 403);
+  }
+  const reporte = reportesMock.find((r) => r.id === reporteId);
+  const noEncontrado = new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404);
+  await responderUno(reporte, noEncontrado);
+  if (!reporte) throw noEncontrado;
+  // Idempotente por id: un reintento de la misma foto devuelve el reporte tal cual.
+  if (reporte.fotos.some((f) => f.id === foto.id)) return copiar(reporte);
+  if (reportesMock.some((r) => r.fotos.some((f) => f.id === foto.id))) {
+    throw new ErrorApi('ID_EN_USO', 'Ese identificador ya está en uso.', 409);
+  }
+  if (!ESTADOS_CON_FOTO_DEL_ARREGLO.includes(reporte.estado)) {
+    throw new ErrorApi(
+      'ESTADO_NO_ADMITE_FOTO',
+      'La foto del arreglo se sube cuando el reporte está asignado o resuelto.',
+      422,
+    );
+  }
+  if (reporte.fotos.filter((f) => f.momento === 'arreglo').length >= MAX_FOTOS_DEL_ARREGLO) {
+    throw new ErrorApi('VALIDACION_FALLIDA', 'Se pueden subir hasta tres fotos del arreglo.', 400);
+  }
+  // Se trabaja sobre el del mock (no una copia): la foto tiene que quedar.
+  reporte.fotos.push({ id: foto.id, url: subirArchivoMock(foto.uri), momento: 'arreglo' });
+  return copiar(reporte);
+}
 
 /** La API recorta el comentario a este largo (DECISIONS P18). */
 export const LARGO_MAXIMO_COMENTARIO = 1000;
