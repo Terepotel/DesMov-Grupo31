@@ -9,7 +9,13 @@ import { loginAccounts, usuariosMock } from '@/mocks';
 import type { RespuestaUno, Sesion, Usuario } from '@/tipos';
 
 import { ErrorApi, establecerToken, pedir, USAR_MOCKS } from './api';
-import { responderUno, tokenMock, usuarioIdDeLaSesionMock } from './mock';
+import {
+  ahoraMock,
+  responderUno,
+  tokenMock,
+  usuarioIdDeLaSesionMock,
+  verificarEscenario,
+} from './mock';
 
 const CLAVE_TOKEN = 'sesion.token';
 const CLAVE_USUARIO = 'sesion.usuario';
@@ -39,7 +45,30 @@ export async function iniciarSesion(email: string, contrasena: string): Promise<
           cuerpo: { email, contrasena },
         })
       ).datos;
+  return guardarSesion(sesion);
+}
 
+/** Lo que pide `POST /auth/registro` (P14). La API siempre crea un vecino. */
+export interface Registro {
+  nombre: string;
+  email: string;
+  contrasena: string;
+  telefono: string | null;
+}
+
+/** La API exige al menos esto (`VALIDACION_FALLIDA` si no); se revisa antes en el formulario. */
+export const LARGO_MINIMO_CONTRASENA = 8;
+
+/** Crea la cuenta del vecino y deja la sesión iniciada, como el ingreso. */
+export async function registrarse(registro: Registro): Promise<Usuario> {
+  const sesion = USAR_MOCKS
+    ? await registrarseMock(registro)
+    : (await pedir<RespuestaUno<Sesion>>('/auth/registro', { metodo: 'POST', cuerpo: registro }))
+        .datos;
+  return guardarSesion(sesion);
+}
+
+async function guardarSesion(sesion: Sesion): Promise<Usuario> {
   establecerToken(sesion.token);
   await Promise.all([
     almacen.escribir(CLAVE_TOKEN, sesion.token),
@@ -82,5 +111,28 @@ async function iniciarSesionMock(email: string, contrasena: string): Promise<Ses
     cuenta?.usuario,
     new ErrorApi('CREDENCIALES_INVALIDAS', 'El email o la contraseña no son correctos.', 401),
   );
+  return { token: tokenMock(usuario.id), usuario };
+}
+
+// Como la API: el email es único sin distinguir mayúsculas (EMAIL_YA_REGISTRADO), y la cuenta nueva
+// sirve para ingresar de nuevo mientras la app esté abierta.
+async function registrarseMock(registro: Registro): Promise<Sesion> {
+  verificarEscenario();
+  const email = registro.email.trim().toLowerCase();
+  if (usuariosMock.some((u) => u.email.toLowerCase() === email)) {
+    throw new ErrorApi('EMAIL_YA_REGISTRADO', 'Ya hay una cuenta con ese email.', 409);
+  }
+  const usuario: Usuario = {
+    id: `usr-${String(usuariosMock.length + 1).padStart(3, '0')}`,
+    nombre: registro.nombre.trim(),
+    email,
+    telefono: registro.telefono,
+    rol: 'vecino',
+    zonaId: null,
+    avisosActivos: true,
+    creadoEn: ahoraMock(),
+  };
+  usuariosMock.push(usuario);
+  loginAccounts.push({ email, password: registro.contrasena, usuario });
   return { token: tokenMock(usuario.id), usuario };
 }

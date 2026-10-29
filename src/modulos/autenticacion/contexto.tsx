@@ -8,6 +8,7 @@ interface ValorSesion {
   cargando: boolean;
   usuario: Usuario | null;
   ingresar: (email: string, contrasena: string) => Promise<void>;
+  registrar: (registro: servicioSesion.Registro) => Promise<void>;
   salir: () => Promise<void>;
 }
 
@@ -57,10 +58,18 @@ export function ProveedorSesion({ children }: PropsWithChildren) {
     setUsuario(await servicioSesion.iniciarSesion(email, contrasena));
   }
 
+  async function registrar(registro: servicioSesion.Registro) {
+    setUsuario(await servicioSesion.registrarse(registro));
+  }
+
   async function salir() {
     await servicioSesion.cerrarSesion();
     setUsuario(null);
   }
 
-  return <ContextoSesion value={{ cargando, usuario, ingresar, salir }}>{children}</ContextoSesion>;
+  return (
+    <ContextoSesion value={{ cargando, usuario, ingresar, registrar, salir }}>
+      {children}
+    </ContextoSesion>
+  );
 }

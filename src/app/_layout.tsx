@@ -25,7 +25,7 @@ export default function RootLayout() {
   );
 }
 
-// Sin sesión sólo se puede ver `ingreso`; con sesión, sólo la app.
+// Sin sesión sólo se pueden ver `ingreso` y `registro`; con sesión, sólo la app.
 function NavegadorRaiz() {
   const { cargando, usuario } = useSesion();
   // Sólo los pesos que usa el design system. Si una fuente falla, se sigue con la del sistema.
@@ -45,6 +45,7 @@ function NavegadorRaiz() {
         </Stack.Protected>
         <Stack.Protected guard={!usuario}>
           <Stack.Screen name="ingreso" />
+          <Stack.Screen name="registro" />
         </Stack.Protected>
       </Stack>
       {/* El splash se esconde recién cuando se sabe si hay sesión guardada y están las fuentes. */}
