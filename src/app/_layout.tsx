@@ -11,6 +11,7 @@ import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/componentes/animated-icon';
 import { ProveedorSesion, useSesion } from '@/modulos/autenticacion/contexto';
+import { PantallaBloqueo } from '@/modulos/autenticacion/pantalla-bloqueo';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,9 +26,9 @@ export default function RootLayout() {
   );
 }
 
-// Sin sesión sólo se puede ver `ingreso`; con sesión, sólo la app.
+// Sin sesión sólo se pueden ver `ingreso` y `registro`; con sesión, sólo la app.
 function NavegadorRaiz() {
-  const { cargando, usuario } = useSesion();
+  const { cargando, usuario, bloqueada } = useSesion();
   // Sólo los pesos que usa el design system. Si una fuente falla, se sigue con la del sistema.
   const [fuentesListas, errorFuentes] = useFonts({
     AtkinsonHyperlegibleNext_400Regular,
@@ -45,8 +46,11 @@ function NavegadorRaiz() {
         </Stack.Protected>
         <Stack.Protected guard={!usuario}>
           <Stack.Screen name="ingreso" />
+          <Stack.Screen name="registro" />
         </Stack.Protected>
       </Stack>
+      {/* R4.7: con sesión guardada, la huella (o la contraseña) antes de ver la app. */}
+      {usuario && bloqueada && <PantallaBloqueo usuario={usuario} />}
       {/* El splash se esconde recién cuando se sabe si hay sesión guardada y están las fuentes. */}
       {listo && <AnimatedSplashOverlay />}
     </>
