@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { useSesion } from '@/modulos/autenticacion/contexto';
+import { useAvisosDeLaCola } from '@/servicios/avisos-locales';
 import { useSincronizarCola } from '@/servicios/cola';
 
 // Todo lo que está en (app) requiere sesión: el guard está en el _layout.tsx raíz.
@@ -10,6 +11,8 @@ export default function AppLayout() {
   const { usuario } = useSesion();
   // R1.7: los reportes que quedaron sin subir se mandan solos, sin que el vecino haga nada.
   useSincronizarCola(usuario?.rol === 'vecino' ? usuario.id : null);
+  // P2: el número llega en un aviso del teléfono, si el vecino los tiene activos en su cuenta.
+  useAvisosDeLaCola(usuario?.rol === 'vecino' && usuario.avisosActivos);
 
   return (
     <>

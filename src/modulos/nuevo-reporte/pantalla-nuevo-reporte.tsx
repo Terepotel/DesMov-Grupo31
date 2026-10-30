@@ -15,6 +15,7 @@ import { useSesion } from '@/modulos/autenticacion/contexto';
 import { mensajeDeError } from '@/servicios/api';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
 import { borrarNotaDeVoz, type NotaGrabada } from '@/servicios/notas-de-voz';
+import { pedirPermisoDeAvisos } from '@/servicios/avisos-locales';
 import { enviarReporte, hayConexion } from '@/servicios/cola';
 import { direccionDesdeCoordenadas } from '@/servicios/ubicacion';
 import type { Coordenadas, Reporte, TipoDeReporte } from '@/tipos';
@@ -239,6 +240,8 @@ export function PantallaNuevoReporte() {
         // Las fotos y la nota ahora son de la cola: se borran cuando el reporte llega.
         limpiar({ conservarArchivos: true });
         setEnCola(true);
+        // Para avisarle con el número cuando se suba solo (P2).
+        if (usuario?.avisosActivos) void pedirPermisoDeAvisos();
       }
     } catch (error) {
       setErrorDeEnvio(mensajeDeError(error));
