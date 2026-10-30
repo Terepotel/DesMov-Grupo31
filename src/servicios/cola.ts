@@ -8,10 +8,11 @@
 
 import * as Network from 'expo-network';
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 
 import type { Coordenadas, Reporte } from '@/tipos';
+import { CENTRO_CIUDAD } from '@/utilidades/geo';
 import { nuevoId } from '@/utilidades/reportes';
 
 import { ERROR_RED, ErrorApi, TIEMPO_AGOTADO } from './api';
@@ -131,6 +132,70 @@ export function useColaDeReportes(usuarioId: string) {
     if (usuarioId && actual.usuarioId !== usuarioId) refrescar(usuarioId);
   }, [usuarioId]);
   return vista.usuarioId === usuarioId ? vista.entradas : [];
+}
+
+/**
+ * Uno de la cola como se muestra en las listas y el detalle: «Sin enviar», sin número (P2). Sin
+ * punto todavía, el centro de la ciudad: ninguna pantalla lo dibuja en el mapa.
+ */
+function comoReporte(usuarioId: string, reporte: ReporteEnCola): Reporte {
+  return {
+    id: reporte.id,
+    codigo: '',
+    tipoId: reporte.tipoId,
+    descripcion: reporte.descripcion,
+    audioUrl: reporte.audio?.uri ?? null,
+    fotos: reporte.fotos.map((foto) => ({ id: foto.id, url: foto.uri, momento: 'problema' })),
+    coordenadas: reporte.coordenadas ?? CENTRO_CIUDAD,
+    direccion: reporte.direccion ?? 'Sin dirección todavía',
+    zonaId: '',
+    estado: 'recibido',
+    autorId: usuarioId,
+    cuadrillaId: null,
+    duplicadoDe: null,
+    adhesiones: 0,
+    creadoEn: reporte.creadoEn,
+    sincronizado: false,
+  };
+}
+
+/** Los que esperan señal, como reportes «Sin enviar», del más nuevo al más viejo. */
+export function useReportesDeLaCola(usuarioId: string) {
+  const entradas = useColaDeReportes(usuarioId);
+  return useMemo(
+    () =>
+      entradas
+        .filter((entrada) => entrada.estado === 'pendiente')
+        .map((entrada) => comoReporte(usuarioId, entrada.reporte))
+        .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn)),
+    [entradas, usuarioId],
+  );
+}
+
+/**
+ * Los de la cola primero y después los de la API, sin repetir: uno que se acaba de subir puede
+ * estar en las dos un momento. `total` es el de la API más los que sólo están en la cola.
+ */
+export function mezclarConLaCola(locales: Reporte[], reportes: Reporte[], total: number) {
+  const ids = new Set(locales.map((reporte) => reporte.id));
+  const delServidor = reportes.filter((reporte) => !ids.has(reporte.id));
+  return {
+    reportes: [...locales, ...delServidor],
+    total: total + locales.length - (reportes.length - delServidor.length),
+  };
+}
+
+/** El detalle de uno que todavía no se subió, o `null` si no está en la cola. Nunca lanza. */
+export function buscarEnLaCola(usuarioId: string, id: string): Reporte | null {
+  try {
+    const fila = abrir().getFirstSync<{ reporte: string }>(
+      "SELECT reporte FROM reportes_en_cola WHERE id = ? AND usuario_id = ? AND estado = 'pendiente'",
+      [id, usuarioId],
+    );
+    return fila ? comoReporte(usuarioId, JSON.parse(fila.reporte) as ReporteEnCola) : null;
+  } catch {
+    return null;
+  }
 }
 
 function ahora() {
@@ -273,6 +338,7 @@ export function sincronizarCola(usuarioId: string): Promise<void> {
         try {
           const enviado = await subir(reporte);
           sacar(reporte);
+          refrescar(usuarioId);
           oyentesDeSubida.forEach((oyente) => oyente(enviado));
         } catch (error) {
           if (error instanceof ErrorApi && error.codigo === 'NO_AUTENTICADO') break;

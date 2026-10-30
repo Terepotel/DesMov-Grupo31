@@ -47,9 +47,7 @@ export function useCarga<T>(cargar: () => Promise<T>) {
   }
 
   /** Vuelve a pedir sin vaciar la pantalla: lo que había se ve hasta que llega lo nuevo. */
-  function recargar() {
-    setIntento((n) => n + 1);
-  }
+  const recargar = useCallback(() => setIntento((n) => n + 1), []);
 
   return { carga, reintentar, recargar };
 }

@@ -48,7 +48,11 @@ export function PantallaDetalleReporte({ id, acciones }: Props) {
   const margenes = useSafeAreaInsets();
   const { usuario } = useSesion();
   const esOperador = usuario?.rol === 'operador';
-  const cargar = useCallback(() => cargarDetalle(id, esOperador), [id, esOperador]);
+  const vecinoId = usuario?.rol === 'vecino' ? usuario.id : null;
+  const cargar = useCallback(
+    () => cargarDetalle(id, esOperador, vecinoId),
+    [id, esOperador, vecinoId],
+  );
   const { carga, reintentar, recargar } = useCarga(cargar);
 
   return (
