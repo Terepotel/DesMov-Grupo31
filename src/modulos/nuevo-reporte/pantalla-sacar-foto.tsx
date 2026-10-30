@@ -14,6 +14,7 @@ import { entregarFotoDelArreglo } from '@/modulos/bandeja/foto-del-arreglo-pendi
 
 import { AvisoSinCamara } from './aviso-sin-camara';
 import { ponerFotoDelReporte } from './fotos-del-reporte';
+import { useFotoMovida } from './use-foto-movida';
 
 export type ParametrosSacarFoto = {
   /** Del nuevo reporte: 0 la primera foto, 1 la segunda. */
@@ -26,7 +27,7 @@ export type ParametrosSacarFoto = {
  * «Sacar la foto»: la cámara y un solo botón. En el nuevo reporte (R1.2) la foto queda en
  * `fotos-del-reporte`, en el `lugar` que manda el formulario (0 la primera, 1 la segunda). Con
  * `destino=arreglo`, queda en `foto-del-arreglo-pendiente` y la sube el detalle (R4.5). En los dos
- * casos se vuelve a la pantalla anterior.
+ * casos se vuelve a la pantalla anterior. Si el teléfono se mueve mientras encuadra, avisa (P20).
  */
 export function PantallaSacarFoto() {
   const { lugar, destino } = useLocalSearchParams<ParametrosSacarFoto>();
@@ -37,6 +38,8 @@ export function PantallaSacarFoto() {
   const [lista, setLista] = useState(false);
   const [sacando, setSacando] = useState(false);
   const [error, setError] = useState<'abrir' | 'sacar' | null>(null);
+  // P20: sólo avisa, nunca frena el disparo.
+  const movida = useFotoMovida(lista && !sacando && error !== 'abrir');
 
   // Si fue a la configuración a dar el permiso, al volver a la app se mira de nuevo.
   useEffect(() => {
@@ -103,6 +106,17 @@ export function PantallaSacarFoto() {
                 onCameraReady={() => setLista(true)}
                 onMountError={() => setError('abrir')}
               />
+              {/* Encima del visor, para que el botón no cambie de lugar cuando aparece. */}
+              {movida && (
+                <View className="absolute bottom-3 left-3 right-3">
+                  <Aviso
+                    tono="atencion"
+                    icono="hand-left-outline"
+                    titulo="El teléfono se está moviendo."
+                    detalle="Quedate quieto un momento para que la foto no salga movida."
+                  />
+                </View>
+              )}
             </View>
 
             <Texto variante="secundario">
