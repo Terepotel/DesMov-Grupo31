@@ -14,7 +14,6 @@ export interface CamposDelReporte {
   /** Sin punto, la calle escrita alcanza: las coordenadas se buscan al enviar (P3). */
   direccionEscrita: string;
   descripcion: string;
-  conNotaDeVoz: boolean;
   /** Mientras graba, la nota todavía no existe: hay que terminarla antes de enviar. */
   grabando: boolean;
 }
@@ -36,12 +35,11 @@ export function validarReporte(campos: CamposDelReporte): ErroresDelReporte {
   if (!campos.coordenadas && campos.direccionEscrita.trim() === '') {
     errores.ubicacion = 'Marcá en el mapa dónde está el problema o escribí la dirección.';
   }
-  // Texto, nota de voz o los dos, pero al menos uno (P15). La API acepta los dos en `null`.
+  // Texto y nota de voz son opcionales (P15, respuesta de la cátedra del 29/10): tipo, foto y lugar
+  // alcanzan, como en la API. Sólo se frena si está grabando o si el texto se pasa del tope.
   const descripcion = campos.descripcion.trim();
   if (campos.grabando) errores.descripcion = 'Terminá la grabación antes de enviar.';
-  else if (descripcion === '' && !campos.conNotaDeVoz) {
-    errores.descripcion = 'Contanos en pocas palabras qué pasa, o grabá una nota de voz.';
-  } else if (descripcion.length > MAX_DESCRIPCION) {
+  else if (descripcion.length > MAX_DESCRIPCION) {
     errores.descripcion = `Puede tener hasta ${MAX_DESCRIPCION} letras. Acortala un poco.`;
   }
   return errores;

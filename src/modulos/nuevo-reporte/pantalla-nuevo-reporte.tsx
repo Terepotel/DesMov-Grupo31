@@ -54,8 +54,9 @@ import {
 const cargarTipos = async () => (await obtenerTiposDeReporte()).datos;
 
 /**
- * Nuevo reporte (R1): todo en una pantalla, para que lleve menos de un minuto (NF2). Tipo, foto,
- * ubicación y descripción son obligatorios; al enviar se muestra el número de seguimiento (R1.6).
+ * Nuevo reporte (R1): todo en una pantalla, para que lleve menos de un minuto (NF2). Tipo, foto y
+ * ubicación son obligatorios; el texto y la nota de voz, no (P15). Al enviar se muestra el número
+ * de seguimiento (R1.6).
  */
 export function PantallaNuevoReporte() {
   const margenes = useSafeAreaInsets();
@@ -171,7 +172,6 @@ export function PantallaNuevoReporte() {
     coordenadas: ubicacion.coordenadas,
     direccionEscrita: ubicacion.direccionEscrita ?? '',
     descripcion,
-    conNotaDeVoz: nota !== null,
     grabando,
   });
   // El error de la revisión vale mientras la ubicación siga igual: al tocarla, se va.
@@ -369,6 +369,7 @@ export function PantallaNuevoReporte() {
 
         <Seccion
           titulo="Contanos qué pasa"
+          ayuda="Si querés, escribilo o grabá una nota de voz. No hace falta para enviar."
           error={visibles.descripcion}
           alUbicar={(y) => (posiciones.current.descripcion = y)}>
           <CampoTexto
@@ -465,11 +466,14 @@ async function direccionParaEnviar(direccion: string | null, coordenadas: Coorde
 
 function Seccion({
   titulo,
+  ayuda,
   error,
   alUbicar,
   children,
 }: {
   titulo: string;
+  /** Una línea debajo del título, p. ej. para decir que la sección es opcional. */
+  ayuda?: string;
   error?: string;
   /** Dónde quedó la sección en el scroll, para llevar al vecino al primer error. */
   alUbicar: (y: number) => void;
@@ -480,6 +484,7 @@ function Seccion({
       <Texto variante="titulo-seccion" accessibilityRole="header">
         {titulo}
       </Texto>
+      {ayuda && <Texto variante="secundario">{ayuda}</Texto>}
       {error && (
         <View className="flex-row items-start gap-2">
           <Icono nombre="alert-circle-outline" className="text-peligro" />
