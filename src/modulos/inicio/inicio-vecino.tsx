@@ -14,7 +14,12 @@ import {
 import { TarjetaReporte, TarjetaReporteCargando } from '@/componentes/ui/tarjeta-reporte';
 import { Texto } from '@/componentes/ui/texto';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
-import { alSubirDeLaCola, mezclarConLaCola, useReportesDeLaCola } from '@/servicios/cola';
+import {
+  alSubirDeLaCola,
+  mezclarConLaCola,
+  rechazoDe,
+  useReportesDeLaCola,
+} from '@/servicios/cola';
 import { obtenerMisReportes } from '@/servicios/reportes';
 import type { Reporte, TipoDeReporte, Usuario } from '@/tipos';
 import { useCarga } from '@/utilidades/use-carga';
@@ -145,11 +150,24 @@ function MisReportes({
     const estado = estadoVisible(reporte);
     cantidades.set(estado, (cantidades.get(estado) ?? 0) + 1);
   }
-  const sinEnviar = cantidades.get('sin_enviar') ?? 0;
+  // Los rechazados al sincronizar ya no se mandan solos: se cuentan aparte (P11).
+  const noEnviados = reportes.filter((reporte) => rechazoDe(reporte)).length;
+  const sinEnviar = reportes.filter((r) => !r.sincronizado && !rechazoDe(r)).length;
   const ultimos = reportes.slice(0, 2);
 
   return (
     <>
+      {noEnviados > 0 && (
+        <Aviso
+          tono="error"
+          titulo={
+            noEnviados === 1
+              ? 'Un reporte no se pudo enviar.'
+              : `${noEnviados} reportes no se pudieron enviar.`
+          }
+          detalle="Abrilo en «Mis reportes» para ver qué pasó."
+        />
+      )}
       {sinEnviar > 0 && (
         <Aviso
           tono="atencion"

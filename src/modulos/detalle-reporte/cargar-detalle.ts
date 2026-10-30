@@ -1,6 +1,6 @@
 import { ErrorApi, mensajeDeError } from '@/servicios/api';
 import { obtenerCuadrillas, obtenerTiposDeReporte, obtenerZonas } from '@/servicios/catalogos';
-import { buscarEnLaCola } from '@/servicios/cola';
+import { buscarEnLaCola, type RechazoDeLaCola } from '@/servicios/cola';
 import {
   obtenerCambiosDeEstado,
   obtenerReporte,
@@ -21,6 +21,8 @@ export type DetalleReporte = {
   cuadrillas: Cuadrilla[] | null;
   /** Aparte: si fallan, el reporte se muestra igual y sólo esa sección ofrece reintentar. */
   cambios: CargaCambios;
+  /** Uno de la cola que la API no recibió (P11): no se vuelve a mandar. */
+  rechazo: RechazoDeLaCola | null;
 };
 
 export async function cargarCambios(reporteId: string): Promise<CargaCambios> {
@@ -61,6 +63,7 @@ export async function cargarDetalle(
       zona: null,
       cuadrillas: null,
       cambios: { tipo: 'listo', datos: [] },
+      rechazo: local.rechazo,
     };
   }
   const porCodigo = esCodigoDeSeguimiento(parametro);
@@ -84,5 +87,6 @@ export async function cargarDetalle(
     zona: zonas?.find((z) => z.id === reporte.zonaId) ?? null,
     cuadrillas,
     cambios,
+    rechazo: null,
   };
 }

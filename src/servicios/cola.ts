@@ -134,11 +134,33 @@ export function useColaDeReportes(usuarioId: string) {
   return vista.usuarioId === usuarioId ? vista.entradas : [];
 }
 
+// Rechazos del servidor que la cátedra pidió mostrar con su propio estado (29/10, P11).
+const FUERA_DE_LA_CIUDAD = new Set(['FUERA_DE_LA_CIUDAD', DIRECCION_NO_ENCONTRADA]);
+
+/** Por qué la API no lo recibió: no es un dato de `Reporte` sino de la cola (P11). */
+export interface RechazoDeLaCola {
+  /** El `mensaje` de la API tal cual. */
+  mensaje: string;
+  fueraDeLaCiudad: boolean;
+}
+
+export type ReporteDeLaCola = Reporte & { rechazo: RechazoDeLaCola | null };
+
+/** En una lista mezclada con los de la API: el motivo, si es uno de la cola que se rechazó. */
+export function rechazoDe(reporte: Reporte): RechazoDeLaCola | null {
+  return (reporte as Partial<ReporteDeLaCola>).rechazo ?? null;
+}
+
 /**
- * Uno de la cola como se muestra en las listas y el detalle: «Sin enviar», sin número (P2). Sin
- * punto todavía, el centro de la ciudad: ninguna pantalla lo dibuja en el mapa.
+ * Uno de la cola como se muestra en las listas y el detalle: «Sin enviar», sin número (P2), o
+ * rechazado con su motivo. Sin punto todavía, el centro de la ciudad: ninguna pantalla lo dibuja en
+ * el mapa.
  */
-function comoReporte(usuarioId: string, reporte: ReporteEnCola): Reporte {
+function comoReporte(
+  usuarioId: string,
+  entrada: Omit<EntradaDeCola, 'actualizadoEn'>,
+): ReporteDeLaCola {
+  const { reporte, error } = entrada;
   return {
     id: reporte.id,
     codigo: '',
@@ -156,17 +178,20 @@ function comoReporte(usuarioId: string, reporte: ReporteEnCola): Reporte {
     adhesiones: 0,
     creadoEn: reporte.creadoEn,
     sincronizado: false,
+    rechazo:
+      entrada.estado === 'rechazado' && error
+        ? { mensaje: error.mensaje, fueraDeLaCiudad: FUERA_DE_LA_CIUDAD.has(error.codigo) }
+        : null,
   };
 }
 
-/** Los que esperan señal, como reportes «Sin enviar», del más nuevo al más viejo. */
+/** Los que siguen en la cola, esperando señal o rechazados, del más nuevo al más viejo. */
 export function useReportesDeLaCola(usuarioId: string) {
   const entradas = useColaDeReportes(usuarioId);
   return useMemo(
     () =>
       entradas
-        .filter((entrada) => entrada.estado === 'pendiente')
-        .map((entrada) => comoReporte(usuarioId, entrada.reporte))
+        .map((entrada) => comoReporte(usuarioId, entrada))
         .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn)),
     [entradas, usuarioId],
   );
@@ -186,13 +211,18 @@ export function mezclarConLaCola(locales: Reporte[], reportes: Reporte[], total:
 }
 
 /** El detalle de uno que todavía no se subió, o `null` si no está en la cola. Nunca lanza. */
-export function buscarEnLaCola(usuarioId: string, id: string): Reporte | null {
+export function buscarEnLaCola(usuarioId: string, id: string): ReporteDeLaCola | null {
   try {
-    const fila = abrir().getFirstSync<{ reporte: string }>(
-      "SELECT reporte FROM reportes_en_cola WHERE id = ? AND usuario_id = ? AND estado = 'pendiente'",
+    const fila = abrir().getFirstSync<Pick<Fila, 'reporte' | 'estado' | 'error'>>(
+      'SELECT reporte, estado, error FROM reportes_en_cola WHERE id = ? AND usuario_id = ?',
       [id, usuarioId],
     );
-    return fila ? comoReporte(usuarioId, JSON.parse(fila.reporte) as ReporteEnCola) : null;
+    if (!fila) return null;
+    return comoReporte(usuarioId, {
+      reporte: JSON.parse(fila.reporte) as ReporteEnCola,
+      estado: fila.estado,
+      error: fila.error ? (JSON.parse(fila.error) as EntradaDeCola['error']) : null,
+    });
   } catch {
     return null;
   }

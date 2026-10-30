@@ -5,8 +5,12 @@ import type { EstadoReporte as Estado } from '@/tipos';
 import { Icono, type NombreIcono } from './icono';
 import { Texto, type ColorTexto } from './texto';
 
-/** «Sin enviar» no es un estado de la API: es el reporte que sigue en la cola del teléfono. */
-export type EstadoVisible = Estado | 'sin_enviar';
+/**
+ * «Sin enviar» y «Fuera de la ciudad» no son estados de la API: son reportes que siguen en la cola
+ * del teléfono. El segundo es el que el servidor no recibió porque el punto (o la calle escrita) no
+ * está en la ciudad; no es el «Rechazado» de un operador (P11).
+ */
+export type EstadoVisible = Estado | 'sin_enviar' | 'fuera_de_la_ciudad';
 
 export const estadosReporte: Record<
   EstadoVisible,
@@ -55,14 +59,23 @@ export const estadosReporte: Record<
     claseIcono: 'text-texto-secundario',
     fondo: 'border-2 border-dashed border-borde-control',
   },
+  // Borde lleno: ya no espera nada. Sin el rojo de «Rechazado», que es la decisión de un operador.
+  fuera_de_la_ciudad: {
+    texto: 'Fuera de la ciudad',
+    icono: 'location-outline',
+    color: 'texto',
+    claseIcono: 'text-texto',
+    fondo: 'border-2 border-borde-control bg-superficie-alt',
+  },
 };
 
 /**
- * El orden en que se listan los estados (filtros, resúmenes): «Sin enviar» primero, porque es lo
+ * El orden en que se listan los estados (filtros, resúmenes): los de la cola primero, porque es lo
  * único que el vecino puede tener que mirar, y después en el orden en que avanza un reporte.
  */
 export const ORDEN_ESTADOS_VISIBLES: EstadoVisible[] = [
   'sin_enviar',
+  'fuera_de_la_ciudad',
   'recibido',
   'en_revision',
   'asignado',
@@ -70,8 +83,14 @@ export const ORDEN_ESTADOS_VISIBLES: EstadoVisible[] = [
   'rechazado',
 ];
 
-export function estadoVisible(reporte: { estado: Estado; sincronizado: boolean }): EstadoVisible {
-  return reporte.sincronizado ? reporte.estado : 'sin_enviar';
+/** `rechazo` sólo lo traen los de la cola (`ReporteDeLaCola`). */
+export function estadoVisible(reporte: {
+  estado: Estado;
+  sincronizado: boolean;
+  rechazo?: { fueraDeLaCiudad: boolean } | null;
+}): EstadoVisible {
+  if (reporte.sincronizado) return reporte.estado;
+  return reporte.rechazo?.fueraDeLaCiudad ? 'fuera_de_la_ciudad' : 'sin_enviar';
 }
 
 /** Insignia del estado de un reporte: siempre palabra e ícono, nunca sólo el color. */
