@@ -92,6 +92,8 @@ export function PantallaNuevoReporte() {
   const [enviando, setEnviando] = useState(false);
   const [errorDeEnvio, setErrorDeEnvio] = useState<string | null>(null);
   const [enviado, setEnviado] = useState<Reporte | null>(null);
+  // Sin señal: quedó en la cola y todavía no tiene número (R1.7).
+  const [enCola, setEnCola] = useState(false);
   const [sumado, setSumado] = useState<{ reporte: Reporte; yaEstaba: boolean } | null>(null);
   const cercanos = useCercanos(ubicacion.coordenadas, tipoId);
   // Lo que muestra la hoja: se cierra sin borrarlo, así la animación de salida tiene qué mostrar.
@@ -236,7 +238,7 @@ export function PantallaNuevoReporte() {
       } else {
         // Las fotos y la nota ahora son de la cola: se borran cuando el reporte llega.
         limpiar({ conservarArchivos: true });
-        router.back();
+        setEnCola(true);
       }
     } catch (error) {
       setErrorDeEnvio(mensajeDeError(error));
@@ -292,6 +294,7 @@ export function PantallaNuevoReporte() {
   }
 
   if (enviado) return <ReporteEnviado reporte={enviado} />;
+  if (enCola) return <ReporteEnviado reporte={null} />;
   if (sumado) return <ReporteEnviado reporte={sumado.reporte} sumado={sumado} />;
 
   return (
