@@ -15,7 +15,7 @@ import { useSesion } from '@/modulos/autenticacion/contexto';
 import { mensajeDeError } from '@/servicios/api';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
 import { borrarNotaDeVoz, type NotaGrabada } from '@/servicios/notas-de-voz';
-import { crearReporte } from '@/servicios/reportes';
+import { enviarReporte, hayConexion } from '@/servicios/cola';
 import { direccionDesdeCoordenadas } from '@/servicios/ubicacion';
 import type { Coordenadas, Reporte, TipoDeReporte } from '@/tipos';
 import { ahoraIso, formatearFechaHora } from '@/utilidades/fechas';
@@ -26,6 +26,7 @@ import { borrarBorrador, guardarBorrador, leerBorrador, tieneContenido } from '.
 import {
   limpiarFotosDelReporte,
   restaurarFotosDelReporte,
+  soltarFotosDelReporte,
   useFotosDelReporte,
 } from './fotos-del-reporte';
 import { HojaDuplicados } from './hoja-duplicados';
@@ -198,29 +199,45 @@ export function PantallaNuevoReporte() {
 
     setEnviando(true);
     try {
-      // Además de lo que falta, si la calle existe y el lugar queda en la ciudad: todo en un solo
-      // aviso. Sin punto, la API igual pide coordenadas: salen de la calle escrita (P3).
-      const lugar = await revisarUbicacion(ubicacion.coordenadas, escrita);
+      // Con señal, además de lo que falta, si la calle existe y el lugar queda en la ciudad: todo
+      // en un solo aviso. Sin señal no se puede saber: lo completa y lo revisa la cola al subirlo
+      // (P3); si la API lo rechaza ahí, queda marcado en la cola (P11).
+      const conSenal = await hayConexion();
+      const lugar = conSenal
+        ? await revisarUbicacion(ubicacion.coordenadas, escrita)
+        : { coordenadas: ubicacion.coordenadas, error: null };
       setLugarRevisado(lugar.error ? { para: ubicacion, error: lugar.error } : null);
       if (llevarAlPrimerError(lugar.error ? { ...faltantes, ubicacion: lugar.error } : faltantes)) {
         return;
       }
-      // Ya validado: ni el tipo ni el punto son `null`.
-      const coordenadas = lugar.coordenadas as Coordenadas;
-      const reporte = await crearReporte({
+      const { coordenadas } = lugar;
+      const direccion =
+        escrita ||
+        (coordenadas && conSenal
+          ? await direccionParaEnviar(ubicacion.direccion, coordenadas)
+          : ubicacion.direccion);
+      // R1.7: entra a la cola antes de mandarse, así no se pierde aunque se corte la señal.
+      const resultado = await enviarReporte(usuarioId, {
         id,
+        // Ya validado: el tipo no es `null`.
         tipoId: tipoId as string,
         descripcion: descripcion.trim() || null,
         fotos,
         audio: nota,
         coordenadas,
-        direccion: escrita || (await direccionParaEnviar(ubicacion.direccion, coordenadas)),
+        direccion,
         creadoEn: ahoraIso(),
       });
       // R1.9: la confirmación es táctil antes que visual.
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      limpiar();
-      setEnviado(reporte);
+      if (resultado.tipo === 'enviado') {
+        limpiar();
+        setEnviado(resultado.reporte);
+      } else {
+        // Las fotos y la nota ahora son de la cola: se borran cuando el reporte llega.
+        limpiar({ conservarArchivos: true });
+        router.back();
+      }
     } catch (error) {
       setErrorDeEnvio(mensajeDeError(error));
     } finally {
@@ -233,13 +250,18 @@ export function PantallaNuevoReporte() {
     setNota(null);
   }
 
-  function limpiar() {
+  function limpiar({ conservarArchivos = false } = {}) {
     terminado.current = true;
     pendiente.current = null;
     void borrarBorrador(usuarioId);
     limpiarUbicacionDelReporte();
-    limpiarFotosDelReporte();
-    borrarNota();
+    if (conservarArchivos) {
+      soltarFotosDelReporte();
+      setNota(null);
+    } else {
+      limpiarFotosDelReporte();
+      borrarNota();
+    }
   }
 
   function descartar() {

@@ -2,11 +2,14 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { useSesion } from '@/modulos/autenticacion/contexto';
+import { useSincronizarCola } from '@/servicios/cola';
 
 // Todo lo que está en (app) requiere sesión: el guard está en el _layout.tsx raíz.
 // Las pestañas van en (tabs); lo que se abre encima de ellas, acá.
 export default function AppLayout() {
   const { usuario } = useSesion();
+  // R1.7: los reportes que quedaron sin subir se mandan solos, sin que el vecino haga nada.
+  useSincronizarCola(usuario?.rol === 'vecino' ? usuario.id : null);
 
   return (
     <>
