@@ -15,7 +15,9 @@ import { useSesion } from '@/modulos/autenticacion/contexto';
 import { mensajeDeError } from '@/servicios/api';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
 import { borrarNotaDeVoz, type NotaGrabada } from '@/servicios/notas-de-voz';
-import { crearReporte } from '@/servicios/reportes';
+import { pedirPermisoDeAvisos } from '@/servicios/avisos-locales';
+import { enviarReporte } from '@/servicios/cola';
+import { hayConexion } from '@/servicios/red';
 import { direccionDesdeCoordenadas } from '@/servicios/ubicacion';
 import type { Coordenadas, Reporte, TipoDeReporte } from '@/tipos';
 import { ahoraIso, formatearFechaHora } from '@/utilidades/fechas';
@@ -26,6 +28,7 @@ import { borrarBorrador, guardarBorrador, leerBorrador, tieneContenido } from '.
 import {
   limpiarFotosDelReporte,
   restaurarFotosDelReporte,
+  soltarFotosDelReporte,
   useFotosDelReporte,
 } from './fotos-del-reporte';
 import { HojaDuplicados } from './hoja-duplicados';
@@ -91,7 +94,13 @@ export function PantallaNuevoReporte() {
   const [enviando, setEnviando] = useState(false);
   const [errorDeEnvio, setErrorDeEnvio] = useState<string | null>(null);
   const [enviado, setEnviado] = useState<Reporte | null>(null);
-  const [sumado, setSumado] = useState<{ reporte: Reporte; yaEstaba: boolean } | null>(null);
+  // Sin señal: quedó en la cola y todavía no tiene número (R1.7).
+  const [enCola, setEnCola] = useState(false);
+  const [sumado, setSumado] = useState<{
+    reporte: Reporte;
+    yaEstaba: boolean;
+    pendiente: boolean;
+  } | null>(null);
   const cercanos = useCercanos(ubicacion.coordenadas, tipoId);
   // Lo que muestra la hoja: se cierra sin borrarlo, así la animación de salida tiene qué mostrar.
   const [enLaHoja, setEnLaHoja] = useState<Cercanos | null>(null);
@@ -198,29 +207,47 @@ export function PantallaNuevoReporte() {
 
     setEnviando(true);
     try {
-      // Además de lo que falta, si la calle existe y el lugar queda en la ciudad: todo en un solo
-      // aviso. Sin punto, la API igual pide coordenadas: salen de la calle escrita (P3).
-      const lugar = await revisarUbicacion(ubicacion.coordenadas, escrita);
+      // Con señal, además de lo que falta, si la calle existe y el lugar queda en la ciudad: todo
+      // en un solo aviso. Sin señal no se puede saber: lo completa y lo revisa la cola al subirlo
+      // (P3); si la API lo rechaza ahí, queda marcado en la cola (P11).
+      const conSenal = await hayConexion();
+      const lugar = conSenal
+        ? await revisarUbicacion(ubicacion.coordenadas, escrita)
+        : { coordenadas: ubicacion.coordenadas, error: null };
       setLugarRevisado(lugar.error ? { para: ubicacion, error: lugar.error } : null);
       if (llevarAlPrimerError(lugar.error ? { ...faltantes, ubicacion: lugar.error } : faltantes)) {
         return;
       }
-      // Ya validado: ni el tipo ni el punto son `null`.
-      const coordenadas = lugar.coordenadas as Coordenadas;
-      const reporte = await crearReporte({
+      const { coordenadas } = lugar;
+      const direccion =
+        escrita ||
+        (coordenadas && conSenal
+          ? await direccionParaEnviar(ubicacion.direccion, coordenadas)
+          : ubicacion.direccion);
+      // R1.7: entra a la cola antes de mandarse, así no se pierde aunque se corte la señal.
+      const resultado = await enviarReporte(usuarioId, {
         id,
+        // Ya validado: el tipo no es `null`.
         tipoId: tipoId as string,
         descripcion: descripcion.trim() || null,
         fotos,
         audio: nota,
         coordenadas,
-        direccion: escrita || (await direccionParaEnviar(ubicacion.direccion, coordenadas)),
+        direccion,
         creadoEn: ahoraIso(),
       });
       // R1.9: la confirmación es táctil antes que visual.
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      limpiar();
-      setEnviado(reporte);
+      if (resultado.tipo === 'enviado') {
+        limpiar();
+        setEnviado(resultado.reporte);
+      } else {
+        // Las fotos y la nota ahora son de la cola: se borran cuando el reporte llega.
+        limpiar({ conservarArchivos: true });
+        setEnCola(true);
+        // Para avisarle con el número cuando se suba solo (P2).
+        if (usuario?.avisosActivos) void pedirPermisoDeAvisos();
+      }
     } catch (error) {
       setErrorDeEnvio(mensajeDeError(error));
     } finally {
@@ -233,13 +260,18 @@ export function PantallaNuevoReporte() {
     setNota(null);
   }
 
-  function limpiar() {
+  function limpiar({ conservarArchivos = false } = {}) {
     terminado.current = true;
     pendiente.current = null;
     void borrarBorrador(usuarioId);
     limpiarUbicacionDelReporte();
-    limpiarFotosDelReporte();
-    borrarNota();
+    if (conservarArchivos) {
+      soltarFotosDelReporte();
+      setNota(null);
+    } else {
+      limpiarFotosDelReporte();
+      borrarNota();
+    }
   }
 
   function descartar() {
@@ -261,15 +293,16 @@ export function PantallaNuevoReporte() {
     router.push({ pathname: '/reporte/[id]', params: { id: reporte.id } });
   }
 
-  function alSumarse(reporte: Reporte, yaEstaba: boolean) {
+  function alSumarse(reporte: Reporte, resultado: { yaEstaba: boolean; pendiente: boolean }) {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     // El reporte nuevo no se manda: la foto y la nota ya no hacen falta.
     limpiar();
     setHojaAbierta(false);
-    setSumado({ reporte, yaEstaba });
+    setSumado({ reporte, ...resultado });
   }
 
   if (enviado) return <ReporteEnviado reporte={enviado} />;
+  if (enCola) return <ReporteEnviado reporte={null} />;
   if (sumado) return <ReporteEnviado reporte={sumado.reporte} sumado={sumado} />;
 
   return (

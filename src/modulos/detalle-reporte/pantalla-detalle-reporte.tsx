@@ -16,6 +16,7 @@ import {
 } from '@/componentes/ui/linea-de-tiempo';
 import { Texto } from '@/componentes/ui/texto';
 import { useSesion } from '@/modulos/autenticacion/contexto';
+import { quitarDeLaCola } from '@/servicios/cola';
 import type { CambioDeEstado, Reporte, Usuario } from '@/tipos';
 import { formatearFecha } from '@/utilidades/fechas';
 import { textoAdhesiones } from '@/utilidades/reportes';
@@ -48,7 +49,11 @@ export function PantallaDetalleReporte({ id, acciones }: Props) {
   const margenes = useSafeAreaInsets();
   const { usuario } = useSesion();
   const esOperador = usuario?.rol === 'operador';
-  const cargar = useCallback(() => cargarDetalle(id, esOperador), [id, esOperador]);
+  const vecinoId = usuario?.rol === 'vecino' ? usuario.id : null;
+  const cargar = useCallback(
+    () => cargarDetalle(id, esOperador, vecinoId),
+    [id, esOperador, vecinoId],
+  );
   const { carga, reintentar, recargar } = useCarga(cargar);
 
   return (
@@ -111,8 +116,8 @@ function Detalle({
   usuario: Usuario;
   acciones?: (reporte: Reporte) => ReactNode;
 }) {
-  const { tipo, zona, cuadrillas } = datos;
-  const { reporte, resultado, terminado, sumarme } = useSumarse(datos.reporte);
+  const { tipo, zona, cuadrillas, rechazo } = datos;
+  const { reporte, resultado, terminado, sumarme } = useSumarse(datos.reporte, usuario.id);
   const cambios = useCambios(datos);
   const [qrAbierto, setQrAbierto] = useState(false);
 
@@ -134,7 +139,14 @@ function Detalle({
   return (
     <>
       <View className="gap-4">
-        {reporte.sincronizado ? (
+        {rechazo ? (
+          // P11: la API no lo recibió; no se reenvía. Se dice por qué con su mensaje, tal cual.
+          <Aviso
+            tono="error"
+            titulo={rechazo.mensaje}
+            detalle="Este reporte no se va a enviar. Hacé uno nuevo marcando el lugar dentro de la ciudad."
+          />
+        ) : reporte.sincronizado ? (
           <View className="gap-1">
             <Texto variante="etiqueta" accessibilityElementsHidden importantForAccessibility="no">
               Número de seguimiento
@@ -166,7 +178,7 @@ function Detalle({
         </View>
 
         <View className="gap-2">
-          <EstadoReporte estado={estadoVisible(reporte)} />
+          <EstadoReporte estado={estadoVisible({ ...reporte, rechazo })} />
           {reporte.sincronizado && <Texto>{textoAdhesiones(reporte.adhesiones)}</Texto>}
         </View>
       </View>
@@ -223,6 +235,18 @@ function Detalle({
           </Texto>
           <QueFuePasando cambios={cambios.carga} reintentar={cambios.reintentar} />
         </View>
+      )}
+
+      {rechazo && (
+        <Boton
+          texto="Hacer un reporte nuevo"
+          icono="camera-outline"
+          onPress={() => {
+            // Ya sabe qué pasó: sale de sus reportes y empieza otro.
+            quitarDeLaCola(usuario.id, reporte.id);
+            router.replace('/nuevo-reporte');
+          }}
+        />
       )}
 
       {(conQr || puedeSumarse || resultado.tipo !== 'nada' || accionesDelOperador) && (
@@ -319,6 +343,15 @@ function pasosDe(cambios: CambioDeEstado[]): PasoLineaDeTiempo[] {
 
 function ResultadoDeSumarse({ resultado }: { resultado: ResultadoSumarse }) {
   if (resultado.tipo === 'error') return <Aviso tono="error" titulo={resultado.mensaje} />;
+  if (resultado.tipo === 'pendiente') {
+    return (
+      <Aviso
+        tono="atencion"
+        titulo="Te vas a sumar cuando vuelva la conexión."
+        detalle="Lo mandamos solo, sin que tengas que hacer nada."
+      />
+    );
+  }
   if (resultado.tipo !== 'sumado') return null;
   return (
     <Aviso

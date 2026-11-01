@@ -7,7 +7,8 @@ import { Boton } from '@/componentes/ui/boton';
 import { HojaInferior } from '@/componentes/ui/hoja-inferior';
 import { Texto } from '@/componentes/ui/texto';
 import { mensajeDeError } from '@/servicios/api';
-import { RADIO_CERCANOS_M, sumarseAReporte } from '@/servicios/reportes';
+import { sumarseOGuardar } from '@/servicios/adhesiones-en-cola';
+import { RADIO_CERCANOS_M } from '@/servicios/reportes';
 import type { Coordenadas, Reporte, TipoDeReporte } from '@/tipos';
 
 type Props = {
@@ -22,7 +23,8 @@ type Props = {
   usuarioId: string;
   /** «Es otro problema»: vuelve al formulario para seguir con el suyo. */
   alCerrar: () => void;
-  alSumarse: (reporte: Reporte, yaEstaba: boolean) => void;
+  /** `pendiente`: sin señal; se suma sola cuando vuelva. */
+  alSumarse: (reporte: Reporte, sumado: { yaEstaba: boolean; pendiente: boolean }) => void;
   /** Abre el detalle para mirar las fotos y la descripción antes de decidir. */
   alVerDetalle: (reporte: Reporte) => void;
 };
@@ -60,8 +62,9 @@ export function HojaDuplicados({
     setEnviando(true);
     setError(null);
     try {
-      const respuesta = await sumarseAReporte(elegido.id);
-      alSumarse(respuesta.reporte, respuesta.yaEstaba);
+      const respuesta = await sumarseOGuardar(usuarioId, elegido);
+      if (respuesta.tipo === 'pendiente') alSumarse(elegido, { yaEstaba: false, pendiente: true });
+      else alSumarse(respuesta.reporte, { yaEstaba: respuesta.yaEstaba, pendiente: false });
     } catch (e) {
       setError(mensajeDeError(e));
     } finally {

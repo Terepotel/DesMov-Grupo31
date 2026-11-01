@@ -12,8 +12,8 @@ export type Cercanos = {
 
 /**
  * R1.8 y R3.4: apenas el reporte tiene un punto (el del GPS o el del mapa), los abiertos a menos de
- * 50 m; del mismo tipo si ya se eligió, si no de todos. Sin señal no hay con qué comparar (todavía
- * no se guardan reportes en el teléfono): no se muestra nada, y si se cuela un duplicado lo marca el
+ * 50 m; del mismo tipo si ya se eligió, si no de todos. Sin señal se compara con los últimos que
+ * llegaron al teléfono; los que nunca llegaron no aparecen, y si se cuela un duplicado lo marca el
  * operador (P3).
  */
 export function useCercanos(coordenadas: Coordenadas | null, tipoId: string | null) {

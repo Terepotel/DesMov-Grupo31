@@ -23,7 +23,8 @@ export function PantallaMisReportes() {
 
   const listo = carga.tipo === 'listo';
   const visibles = reportes.filter((r) => elegidos.includes(estadoVisible(r)));
-  const conReportes = listo && total > 0;
+  // Los de la cola se ven aunque la API no responda (R1.7).
+  const conReportes = total > 0;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-fondo">
@@ -47,6 +48,17 @@ export function PantallaMisReportes() {
               </Texto>
               <Texto variante="secundario">Del más nuevo al más viejo.</Texto>
             </View>
+            {carga.tipo === 'error' && (
+              <View className="gap-3">
+                <Aviso tono="error" titulo={carga.mensaje} />
+                <Boton
+                  texto="Probar de nuevo"
+                  variante="secundario"
+                  icono="refresh-outline"
+                  onPress={reintentar}
+                />
+              </View>
+            )}
             {conReportes && (
               <View className="gap-3">
                 <FiltroEstados elegidos={elegidos} alCambiar={setElegidos} />
@@ -66,17 +78,6 @@ export function PantallaMisReportes() {
                 <TarjetaReporteCargando />
                 <TarjetaReporteCargando />
                 <TarjetaReporteCargando />
-              </>
-            )}
-            {carga.tipo === 'error' && (
-              <>
-                <Aviso tono="error" titulo={carga.mensaje} />
-                <Boton
-                  texto="Probar de nuevo"
-                  variante="secundario"
-                  icono="refresh-outline"
-                  onPress={reintentar}
-                />
               </>
             )}
             {listo && total === 0 && (

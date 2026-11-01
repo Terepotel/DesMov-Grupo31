@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,6 +14,12 @@ import {
 import { TarjetaReporte, TarjetaReporteCargando } from '@/componentes/ui/tarjeta-reporte';
 import { Texto } from '@/componentes/ui/texto';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
+import {
+  alSubirDeLaCola,
+  mezclarConLaCola,
+  rechazoDe,
+  useReportesDeLaCola,
+} from '@/servicios/cola';
 import { obtenerMisReportes } from '@/servicios/reportes';
 import type { Reporte, TipoDeReporte, Usuario } from '@/tipos';
 import { useCarga } from '@/utilidades/use-carga';
@@ -33,7 +40,10 @@ async function cargarInicioVecino() {
 /** Inicio del vecino: reportar algo nuevo, cómo van sus reportes y acceso a todo lo demás. */
 export function InicioVecino({ usuario }: { usuario: Usuario }) {
   const margenes = useSafeAreaInsets();
-  const { carga, reintentar } = useCarga(cargarInicioVecino);
+  const { carga, reintentar, recargar } = useCarga(cargarInicioVecino);
+  // Los de la cola (R1.7) cuentan como «Sin enviar» aunque la API no responda.
+  const locales = useReportesDeLaCola(usuario.id);
+  useEffect(() => alSubirDeLaCola(recargar), [recargar]);
   useBarraDeEstadoClara();
 
   return (
@@ -76,9 +86,17 @@ export function InicioVecino({ usuario }: { usuario: Usuario }) {
                 icono="refresh-outline"
                 onPress={reintentar}
               />
+              {locales.length > 0 && (
+                <MisReportes {...mezclarConLaCola(locales, [], 0)} tipos={[]} />
+              )}
             </>
           )}
-          {carga.tipo === 'listo' && <MisReportes {...carga.datos} />}
+          {carga.tipo === 'listo' && (
+            <MisReportes
+              {...mezclarConLaCola(locales, carga.datos.reportes, carga.datos.total)}
+              tipos={carga.datos.tipos}
+            />
+          )}
         </View>
 
         <View className="gap-3">
@@ -132,11 +150,24 @@ function MisReportes({
     const estado = estadoVisible(reporte);
     cantidades.set(estado, (cantidades.get(estado) ?? 0) + 1);
   }
-  const sinEnviar = cantidades.get('sin_enviar') ?? 0;
+  // Los rechazados al sincronizar ya no se mandan solos: se cuentan aparte (P11).
+  const noEnviados = reportes.filter((reporte) => rechazoDe(reporte)).length;
+  const sinEnviar = reportes.filter((r) => !r.sincronizado && !rechazoDe(r)).length;
   const ultimos = reportes.slice(0, 2);
 
   return (
     <>
+      {noEnviados > 0 && (
+        <Aviso
+          tono="error"
+          titulo={
+            noEnviados === 1
+              ? 'Un reporte no se pudo enviar.'
+              : `${noEnviados} reportes no se pudieron enviar.`
+          }
+          detalle="Abrilo en «Mis reportes» para ver qué pasó."
+        />
+      )}
       {sinEnviar > 0 && (
         <Aviso
           tono="atencion"

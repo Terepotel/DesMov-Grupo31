@@ -53,6 +53,11 @@ export function restaurarFotosDelReporte(fotos: FotoDelReporte[]) {
   emitir(fotos.slice(0, MAX_FOTOS_DEL_PROBLEMA));
 }
 
+/** Cuando el reporte queda en la cola (R1.7): las fotos pasan a ser de ella y no se borran. */
+export function soltarFotosDelReporte() {
+  emitir([]);
+}
+
 /** Al empezar un reporte nuevo, al descartarlo o después de enviarlo (ya están en la API). */
 export function limpiarFotosDelReporte() {
   actual.forEach(borrarFoto);

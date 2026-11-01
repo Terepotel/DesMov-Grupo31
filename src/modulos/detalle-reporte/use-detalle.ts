@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { ErrorApi, mensajeDeError } from '@/servicios/api';
-import { sumarseAReporte } from '@/servicios/reportes';
+import { sumarseOGuardar, useAdhesionPendiente } from '@/servicios/adhesiones-en-cola';
 import type { Reporte } from '@/tipos';
 
 import { cargarCambios, type CargaCambios, type DetalleReporte } from './cargar-detalle';
@@ -26,13 +26,15 @@ export type ResultadoSumarse =
   | { tipo: 'nada' }
   | { tipo: 'enviando' }
   | { tipo: 'sumado'; yaEstaba: boolean }
+  /** Sin señal: se suma solo cuando vuelva. */
+  | { tipo: 'pendiente' }
   /** `definitivo`: la API dice que a este reporte no se puede sumar (§8.2); no se vuelve a ofrecer. */
   | { tipo: 'error'; mensaje: string; definitivo: boolean };
 
 const ERRORES_DEFINITIVOS = ['ADHESION_A_REPORTE_PROPIO', 'REPORTE_CERRADO'];
 
 /** R3.5: sumarse a un reporte ajeno y abierto. El reporte que devuelve la API reemplaza al cargado. */
-export function useSumarse(original: Reporte) {
+export function useSumarse(original: Reporte, usuarioId: string) {
   const [local, setLocal] = useState<{
     de: Reporte;
     reporte: Reporte;
@@ -42,22 +44,30 @@ export function useSumarse(original: Reporte) {
   const enviando = useRef(false);
   const vigente = local?.de === original ? local : null;
   const reporte = vigente?.reporte ?? original;
-  const resultado: ResultadoSumarse = vigente?.resultado ?? { tipo: 'nada' };
+  const pendiente = useAdhesionPendiente(usuarioId, original.id);
+  const resultado: ResultadoSumarse =
+    vigente?.resultado ?? (pendiente ? { tipo: 'pendiente' } : { tipo: 'nada' });
   // Ya se sumó (o ya estaba), o la API dijo que no se puede: el botón no vuelve a aparecer.
   const terminado =
-    resultado.tipo === 'sumado' || (resultado.tipo === 'error' && resultado.definitivo);
+    resultado.tipo === 'sumado' ||
+    resultado.tipo === 'pendiente' ||
+    (resultado.tipo === 'error' && resultado.definitivo);
 
   async function sumarme() {
     if (enviando.current) return;
     enviando.current = true;
     setLocal({ de: original, reporte, resultado: { tipo: 'enviando' } });
     try {
-      const respuesta = await sumarseAReporte(original.id);
-      setLocal({
-        de: original,
-        reporte: respuesta.reporte,
-        resultado: { tipo: 'sumado', yaEstaba: respuesta.yaEstaba },
-      });
+      const respuesta = await sumarseOGuardar(usuarioId, original);
+      setLocal(
+        respuesta.tipo === 'pendiente'
+          ? { de: original, reporte, resultado: { tipo: 'pendiente' } }
+          : {
+              de: original,
+              reporte: respuesta.reporte,
+              resultado: { tipo: 'sumado', yaEstaba: respuesta.yaEstaba },
+            },
+      );
     } catch (error) {
       const definitivo = error instanceof ErrorApi && ERRORES_DEFINITIVOS.includes(error.codigo);
       setLocal({

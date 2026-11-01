@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { useSesion } from '@/modulos/autenticacion/contexto';
 import { mensajeDeError } from '@/servicios/api';
 import { obtenerTiposDeReporte } from '@/servicios/catalogos';
+import { alSubirDeLaCola, mezclarConLaCola, useReportesDeLaCola } from '@/servicios/cola';
 import { obtenerMisReportes } from '@/servicios/reportes';
 import type { Reporte } from '@/tipos';
 import { useCarga } from '@/utilidades/use-carga';
@@ -31,20 +33,28 @@ type Siguientes = {
 /**
  * Los reportes del vecino (`GET /yo/reportes`), del más nuevo al más viejo. La primera página se
  * vuelve a pedir al volver a la pantalla (`useCarga`); entonces las siguientes se descartan, porque
- * pertenecen a la carga anterior.
+ * pertenecen a la carga anterior. Los que esperan en la cola (R1.7) van primero, como «Sin enviar»,
+ * aunque la API no responda.
  */
 export function useMisReportes() {
-  const { carga, reintentar } = useCarga(cargarPrimeraPagina);
+  const { usuario } = useSesion();
+  const locales = useReportesDeLaCola(usuario?.id ?? '');
+  const { carga, reintentar, recargar } = useCarga(cargarPrimeraPagina);
+  // Cuando la cola sube uno, se vuelve a pedir la lista para que aparezca con su número.
+  useEffect(() => alSubirDeLaCola(recargar), [recargar]);
   const [siguientes, setSiguientes] = useState<Siguientes | null>(null);
   const [cargandoMas, setCargandoMas] = useState(false);
 
   const base = carga.tipo === 'listo' ? carga.datos : null;
   const vigentes = base && siguientes?.base === base ? siguientes : null;
 
-  const reportes = base ? sinRepetir([...base.reportes, ...(vigentes?.reportes ?? [])]) : [];
-  const total = vigentes?.total ?? base?.total ?? 0;
+  const { reportes, total } = mezclarConLaCola(
+    locales,
+    base ? sinRepetir([...base.reportes, ...(vigentes?.reportes ?? [])]) : [],
+    vigentes?.total ?? base?.total ?? 0,
+  );
   const pagina = vigentes?.pagina ?? 1;
-  const hayMas = base !== null && pagina * POR_PAGINA < total;
+  const hayMas = base !== null && pagina * POR_PAGINA < (vigentes?.total ?? base.total);
 
   async function verMas() {
     if (!base || cargandoMas) return;

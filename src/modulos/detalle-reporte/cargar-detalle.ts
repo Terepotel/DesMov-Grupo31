@@ -1,5 +1,6 @@
 import { ErrorApi, mensajeDeError } from '@/servicios/api';
 import { obtenerCuadrillas, obtenerTiposDeReporte, obtenerZonas } from '@/servicios/catalogos';
+import { buscarEnLaCola, type RechazoDeLaCola } from '@/servicios/cola';
 import {
   obtenerCambiosDeEstado,
   obtenerReporte,
@@ -20,6 +21,8 @@ export type DetalleReporte = {
   cuadrillas: Cuadrilla[] | null;
   /** Aparte: si fallan, el reporte se muestra igual y sólo esa sección ofrece reintentar. */
   cambios: CargaCambios;
+  /** Uno de la cola que la API no recibió (P11): no se vuelve a mandar. */
+  rechazo: RechazoDeLaCola | null;
 };
 
 export async function cargarCambios(reporteId: string): Promise<CargaCambios> {
@@ -39,15 +42,29 @@ export type ParametroDeRuta = string | string[] | undefined;
 
 /**
  * `parametro` es el de la ruta: un id (`rep-…`) o un número de seguimiento (`GCHU-…`, el enlace
- * del QR). Con el id, los cambios se piden a la vez que el reporte; con el código, después.
+ * del QR). Con el id, los cambios se piden a la vez que el reporte; con el código, después. Si es
+ * uno del vecino que todavía está en la cola (R1.7), sale de ahí, sin pedir nada a la API.
  */
 export async function cargarDetalle(
   parametroDeRuta: ParametroDeRuta,
   esOperador: boolean,
+  vecinoId: string | null,
 ): Promise<DetalleReporte> {
   const parametro = (Array.isArray(parametroDeRuta) ? parametroDeRuta[0] : parametroDeRuta)?.trim();
   if (!parametro) {
     throw new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404);
+  }
+  const local = vecinoId ? buscarEnLaCola(vecinoId, parametro) : null;
+  if (local) {
+    const tipos = await opcional(obtenerTiposDeReporte());
+    return {
+      reporte: local,
+      tipo: tipos?.find((t) => t.id === local.tipoId) ?? null,
+      zona: null,
+      cuadrillas: null,
+      cambios: { tipo: 'listo', datos: [] },
+      rechazo: local.rechazo,
+    };
   }
   const porCodigo = esCodigoDeSeguimiento(parametro);
   const cambiosPorId = porCodigo ? null : cargarCambios(parametro);
@@ -70,5 +87,6 @@ export async function cargarDetalle(
     zona: zonas?.find((z) => z.id === reporte.zonaId) ?? null,
     cuadrillas,
     cambios,
+    rechazo: null,
   };
 }
