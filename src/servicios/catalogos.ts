@@ -4,7 +4,7 @@ import { cuadrillasMock, tiposDeReporteMock, zonasMock } from '@/mocks';
 import type { Cuadrilla, RespuestaLista, TipoDeReporte, Zona } from '@/tipos';
 
 import { pedir, USAR_MOCKS } from './api';
-import { hayConexion } from './cola';
+import { hayConexion } from './red';
 import { responderLista } from './mock';
 
 const CLAVE_TIPOS = 'catalogo:tipos-de-reporte';

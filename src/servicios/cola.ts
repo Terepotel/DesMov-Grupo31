@@ -19,6 +19,7 @@ import { ERROR_RED, ErrorApi, TIEMPO_AGOTADO } from './api';
 import { borrarArchivoLocal } from './archivos-locales';
 import type { FotoElegida } from './fotos';
 import type { NotaGrabada } from './notas-de-voz';
+import { hayConexion } from './red';
 import { crearReporte } from './reportes';
 import { coordenadasDesdeDireccion, direccionDesdeCoordenadas } from './ubicacion';
 
@@ -405,16 +406,6 @@ export function quitarDeLaCola(usuarioId: string, id: string) {
     // Si no se puede, sigue en la lista: no se pierde nada.
   }
   refrescar(usuarioId);
-}
-
-/** `isInternetReachable` puede venir vacío: entonces vale `isConnected`. Nunca lanza. */
-export async function hayConexion() {
-  try {
-    const red = await Network.getNetworkStateAsync();
-    return (red.isInternetReachable ?? red.isConnected) === true;
-  } catch {
-    return true;
-  }
 }
 
 /**

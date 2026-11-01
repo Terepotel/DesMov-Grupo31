@@ -18,11 +18,20 @@ import type {
   RespuestaLista,
   RespuestaUno,
 } from '@/tipos';
-import { distanciaEnMetros, estaDentroDe, estaEnCaja, type Caja } from '@/utilidades/geo';
+import { estaDentroDe, type Caja } from '@/utilidades/geo';
 
 import { ErrorApi, pedir, pedirConEstado, USAR_MOCKS } from './api';
 import { MAX_FOTOS_DEL_ARREGLO, MAX_FOTOS_DEL_PROBLEMA, type FotoElegida } from './fotos';
 import type { NotaGrabada } from './notas-de-voz';
+import { hayConexion } from './red';
+import {
+  conLosGuardados,
+  cumpleFiltros,
+  esFallaDeRed,
+  guardarTodaLaCiudad,
+  ordenarReportes,
+  reporteGuardado,
+} from './reportes-guardados';
 import {
   ahoraMock,
   copiar,
@@ -47,44 +56,58 @@ export interface FiltrosDeReportes {
 
 const masNuevoPrimero = (a: Reporte, b: Reporte) => b.creadoEn.localeCompare(a.creadoEn);
 
-/** Los reportes públicos de la ciudad (el mapa). */
+/** Los reportes públicos de la ciudad (el mapa). Sin señal, los últimos que se vieron. */
 export function obtenerReportes(filtros: FiltrosDeReportes = {}): Promise<RespuestaLista<Reporte>> {
   const { tipoId, zonaId, estados, caja, cerca, pagina, porPagina } = filtros;
 
   if (USAR_MOCKS) {
-    const filtrados = reportesMock.filter(
-      (r) =>
-        (tipoId === undefined || r.tipoId === tipoId) &&
-        (zonaId === undefined || r.zonaId === zonaId) &&
-        (estados ? estados.includes(r.estado) : r.estado !== 'rechazado') &&
-        (caja === undefined || estaEnCaja(r.coordenadas, caja)) &&
-        (cerca === undefined ||
-          distanciaEnMetros(cerca.coordenadas, r.coordenadas) <= cerca.radioMetros),
-    );
-    // Con radio, la API ordena del más cercano al más lejano (DECISIONS P12).
-    const ordenados = cerca
-      ? [...filtrados].sort(
-          (a, b) =>
-            distanciaEnMetros(cerca.coordenadas, a.coordenadas) -
-            distanciaEnMetros(cerca.coordenadas, b.coordenadas),
-        )
-      : [...filtrados].sort(masNuevoPrimero);
-    return responderLista(ordenados, { pagina, porPagina });
+    const filtrados = reportesMock.filter((r) => cumpleFiltros(r, filtros));
+    return responderLista(ordenarReportes(filtrados, cerca), { pagina, porPagina });
   }
 
-  return pedir('/reportes', {
-    consulta: {
-      tipoId,
-      zonaId,
-      estado: estados?.join(','),
-      ...caja,
-      latitud: cerca?.coordenadas.latitud,
-      longitud: cerca?.coordenadas.longitud,
-      radioMetros: cerca?.radioMetros,
-      pagina,
-      porPagina,
-    },
-  });
+  return conLosGuardados(filtros, () =>
+    pedir('/reportes', {
+      consulta: {
+        tipoId,
+        zonaId,
+        estado: estados?.join(','),
+        ...caja,
+        latitud: cerca?.coordenadas.latitud,
+        longitud: cerca?.coordenadas.longitud,
+        radioMetros: cerca?.radioMetros,
+        pagina,
+        porPagina,
+      },
+    }),
+  );
+}
+
+/** Lo más que devuelve la API por página. */
+const POR_PAGINA_MAXIMO = 100;
+const PAGINAS_DE_LA_CIUDAD = 10;
+
+/**
+ * Al abrir la app con señal, todos los de la ciudad (sin rechazados) quedan guardados: así, sin
+ * señal, el mapa y los cercanos tienen con qué responder aunque no se haya mirado esa parte del
+ * mapa. Nunca lanza.
+ */
+export async function guardarReportesDeLaCiudad() {
+  if (USAR_MOCKS || !(await hayConexion())) return;
+  try {
+    const reportes: Reporte[] = [];
+    for (let pagina = 1; pagina <= PAGINAS_DE_LA_CIUDAD; pagina++) {
+      const { datos, meta } = await pedir<RespuestaLista<Reporte>>('/reportes', {
+        consulta: { pagina, porPagina: POR_PAGINA_MAXIMO },
+      });
+      reportes.push(...datos);
+      if (pagina * POR_PAGINA_MAXIMO >= meta.total) {
+        guardarTodaLaCiudad(reportes);
+        return;
+      }
+    }
+  } catch {
+    // Se intenta la próxima vez que se abra la app.
+  }
 }
 
 const ABIERTOS: EstadoReporte[] = ['recibido', 'en_revision', 'asignado'];
@@ -100,27 +123,29 @@ export function obtenerReportesCercanos(
   coordenadas: Coordenadas,
   { tipoId, radioMetros }: { tipoId?: string; radioMetros?: number } = {},
 ): Promise<RespuestaLista<Reporte>> {
+  const radio = radioMetros ?? RADIO_CERCANOS_M;
+  const filtros = {
+    estados: ABIERTOS,
+    tipoId,
+    cerca: { coordenadas, radioMetros: radio },
+    sinDuplicados: true,
+  };
+
   if (USAR_MOCKS) {
-    const radio = radioMetros ?? RADIO_CERCANOS_M;
-    const cercanos = reportesMock
-      .filter(
-        (r) =>
-          ABIERTOS.includes(r.estado) &&
-          r.duplicadoDe === null &&
-          (tipoId === undefined || r.tipoId === tipoId) &&
-          distanciaEnMetros(coordenadas, r.coordenadas) <= radio,
-      )
-      .sort(
-        (a, b) =>
-          distanciaEnMetros(coordenadas, a.coordenadas) -
-          distanciaEnMetros(coordenadas, b.coordenadas),
-      );
-    return responderLista(cercanos);
+    const cercanos = reportesMock.filter((r) => cumpleFiltros(r, filtros));
+    return responderLista(ordenarReportes(cercanos, filtros.cerca));
   }
 
-  return pedir('/reportes/cercanos', {
-    consulta: { latitud: coordenadas.latitud, longitud: coordenadas.longitud, tipoId, radioMetros },
-  });
+  return conLosGuardados(filtros, () =>
+    pedir('/reportes/cercanos', {
+      consulta: {
+        latitud: coordenadas.latitud,
+        longitud: coordenadas.longitud,
+        tipoId,
+        radioMetros,
+      },
+    }),
+  );
 }
 
 export async function obtenerReporte(id: string): Promise<Reporte> {
@@ -130,7 +155,14 @@ export async function obtenerReporte(id: string): Promise<Reporte> {
       new ErrorApi('REPORTE_NO_ENCONTRADO', 'No encontramos ese reporte.', 404),
     );
   }
-  return (await pedir<RespuestaUno<Reporte>>(`/reportes/${encodeURIComponent(id)}`)).datos;
+  try {
+    return (await pedir<RespuestaUno<Reporte>>(`/reportes/${encodeURIComponent(id)}`)).datos;
+  } catch (error) {
+    // Sin señal, uno que ya se vio en el mapa se abre igual.
+    const guardado = esFallaDeRed(error) ? reporteGuardado(id) : null;
+    if (guardado) return guardado;
+    throw error;
+  }
 }
 
 /**
