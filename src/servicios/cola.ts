@@ -15,6 +15,7 @@ import type { Coordenadas, Reporte } from '@/tipos';
 import { CENTRO_CIUDAD } from '@/utilidades/geo';
 import { nuevoId } from '@/utilidades/reportes';
 
+import { sincronizarAdhesiones } from './adhesiones-en-cola';
 import { ERROR_RED, ErrorApi, TIEMPO_AGOTADO } from './api';
 import { borrarArchivoLocal } from './archivos-locales';
 import type { FotoElegida } from './fotos';
@@ -414,12 +415,17 @@ export function quitarDeLaCola(usuarioId: string, id: string) {
 export function useSincronizarCola(usuarioId: string | null) {
   useEffect(() => {
     if (!usuarioId) return;
-    void sincronizarCola(usuarioId);
+    // Las adhesiones que quedaron sin señal salen junto con los reportes.
+    const sincronizar = () => {
+      void sincronizarCola(usuarioId);
+      void sincronizarAdhesiones(usuarioId);
+    };
+    sincronizar();
     const red = Network.addNetworkStateListener((estado) => {
-      if (estado.isInternetReachable ?? estado.isConnected) void sincronizarCola(usuarioId);
+      if (estado.isInternetReachable ?? estado.isConnected) sincronizar();
     });
     const app = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active') void sincronizarCola(usuarioId);
+      if (estado === 'active') sincronizar();
     });
     return () => {
       red.remove();

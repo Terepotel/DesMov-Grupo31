@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 
 import type { Reporte } from '@/tipos';
 
+import { alSumarseDesdeLaCola } from './adhesiones-en-cola';
 import { alSubirDeLaCola } from './cola';
 
 const CANAL = 'reportes';
@@ -63,14 +64,36 @@ async function avisarReporteSubido(reporte: Reporte) {
   }
 }
 
+async function avisarAdhesion(adhesion: { reporteId: string; codigo: string; direccion: string }) {
+  try {
+    if (!(await Notifications.getPermissionsAsync()).granted) return;
+    await prepararCanal();
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Te sumaste al reporte',
+        body: `Te sumaste al reporte ${adhesion.codigo} en ${adhesion.direccion}.`,
+        data: { reporteId: adhesion.reporteId },
+      },
+      trigger: Platform.OS === 'android' ? { channelId: CANAL } : null,
+    });
+  } catch {
+    // La adhesión llegó igual.
+  }
+}
+
 /**
- * En el layout con sesión: avisa cada reporte que sube la cola, si el vecino tiene los avisos
+ * En el layout con sesión: avisa cada reporte que sube la cola, y cada adhesión que quedó sin señal, si el vecino tiene los avisos
  * activos en su cuenta, y al tocar el aviso abre el reporte.
  */
 export function useAvisosDeLaCola(avisosActivos: boolean) {
   useEffect(() => {
     if (!avisosActivos) return;
-    return alSubirDeLaCola((reporte) => void avisarReporteSubido(reporte));
+    const reportes = alSubirDeLaCola((reporte) => void avisarReporteSubido(reporte));
+    const adhesiones = alSumarseDesdeLaCola((adhesion) => void avisarAdhesion(adhesion));
+    return () => {
+      reportes();
+      adhesiones();
+    };
   }, [avisosActivos]);
 
   useEffect(() => {

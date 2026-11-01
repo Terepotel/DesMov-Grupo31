@@ -11,8 +11,11 @@ import type { Reporte } from '@/tipos';
 type Props =
   | {
       reporte: Reporte;
-      /** Si el vecino se sumó a uno que ya existía en vez de crear otro (R3.5). */
-      sumado?: { yaEstaba: boolean };
+      /**
+       * Si el vecino se sumó a uno que ya existía en vez de crear otro (R3.5). `pendiente`: sin
+       * señal, se suma solo cuando vuelva.
+       */
+      sumado?: { yaEstaba: boolean; pendiente?: boolean };
     }
   /** Sin señal: quedó en la cola (R1.7) y todavía no tiene número. */
   | { reporte: null; sumado?: undefined };
@@ -28,9 +31,12 @@ export function ReporteEnviado({ reporte, sumado }: Props) {
     ? 'Tu reporte quedó guardado'
     : !sumado
       ? 'Recibimos tu reporte'
-      : sumado.yaEstaba
-        ? 'Ya estabas sumado a este reporte'
-        : 'Te sumaste al reporte';
+      : sumado.pendiente
+        ? 'Te vas a sumar al reporte'
+        : sumado.yaEstaba
+          ? 'Ya estabas sumado a este reporte'
+          : 'Te sumaste al reporte';
+  const sinSenal = !reporte || sumado?.pendiente;
 
   return (
     <ScrollView
@@ -41,7 +47,7 @@ export function ReporteEnviado({ reporte, sumado }: Props) {
       }}>
       <View className="w-full max-w-lg gap-8 self-center px-6">
         <View className="items-start gap-4">
-          {reporte ? (
+          {!sinSenal ? (
             <Icono nombre="checkmark-circle" tamano={64} className="text-estado-resuelto" />
           ) : (
             <Icono nombre="cloud-offline-outline" tamano={64} className="text-texto-secundario" />
@@ -54,6 +60,11 @@ export function ReporteEnviado({ reporte, sumado }: Props) {
             <Texto>
               No mandamos uno nuevo: el reporte sigue con su foto y su descripción. Cuanta más gente
               se suma, más arriba queda en la lista de Obras.
+            </Texto>
+          )}
+          {sumado?.pendiente && (
+            <Texto>
+              Ahora no hay conexión. Te sumamos cuando vuelva, sin que tengas que hacer nada.
             </Texto>
           )}
           {!reporte && (

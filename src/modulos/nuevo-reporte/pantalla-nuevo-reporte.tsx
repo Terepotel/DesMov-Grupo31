@@ -96,7 +96,11 @@ export function PantallaNuevoReporte() {
   const [enviado, setEnviado] = useState<Reporte | null>(null);
   // Sin señal: quedó en la cola y todavía no tiene número (R1.7).
   const [enCola, setEnCola] = useState(false);
-  const [sumado, setSumado] = useState<{ reporte: Reporte; yaEstaba: boolean } | null>(null);
+  const [sumado, setSumado] = useState<{
+    reporte: Reporte;
+    yaEstaba: boolean;
+    pendiente: boolean;
+  } | null>(null);
   const cercanos = useCercanos(ubicacion.coordenadas, tipoId);
   // Lo que muestra la hoja: se cierra sin borrarlo, así la animación de salida tiene qué mostrar.
   const [enLaHoja, setEnLaHoja] = useState<Cercanos | null>(null);
@@ -289,12 +293,12 @@ export function PantallaNuevoReporte() {
     router.push({ pathname: '/reporte/[id]', params: { id: reporte.id } });
   }
 
-  function alSumarse(reporte: Reporte, yaEstaba: boolean) {
+  function alSumarse(reporte: Reporte, resultado: { yaEstaba: boolean; pendiente: boolean }) {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     // El reporte nuevo no se manda: la foto y la nota ya no hacen falta.
     limpiar();
     setHojaAbierta(false);
-    setSumado({ reporte, yaEstaba });
+    setSumado({ reporte, ...resultado });
   }
 
   if (enviado) return <ReporteEnviado reporte={enviado} />;

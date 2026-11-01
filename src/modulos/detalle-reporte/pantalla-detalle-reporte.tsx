@@ -117,7 +117,7 @@ function Detalle({
   acciones?: (reporte: Reporte) => ReactNode;
 }) {
   const { tipo, zona, cuadrillas, rechazo } = datos;
-  const { reporte, resultado, terminado, sumarme } = useSumarse(datos.reporte);
+  const { reporte, resultado, terminado, sumarme } = useSumarse(datos.reporte, usuario.id);
   const cambios = useCambios(datos);
   const [qrAbierto, setQrAbierto] = useState(false);
 
@@ -343,6 +343,15 @@ function pasosDe(cambios: CambioDeEstado[]): PasoLineaDeTiempo[] {
 
 function ResultadoDeSumarse({ resultado }: { resultado: ResultadoSumarse }) {
   if (resultado.tipo === 'error') return <Aviso tono="error" titulo={resultado.mensaje} />;
+  if (resultado.tipo === 'pendiente') {
+    return (
+      <Aviso
+        tono="atencion"
+        titulo="Te vas a sumar cuando vuelva la conexión."
+        detalle="Lo mandamos solo, sin que tengas que hacer nada."
+      />
+    );
+  }
   if (resultado.tipo !== 'sumado') return null;
   return (
     <Aviso
