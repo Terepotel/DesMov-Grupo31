@@ -67,6 +67,14 @@
       ],
       "expo-sqlite",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#3F99D5"
