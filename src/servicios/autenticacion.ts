@@ -3,7 +3,6 @@
 // poder abrir la app sin señal (NF1) y refrescarlo cuando vuelva la conexión.
 
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
 import { loginAccounts, usuariosMock } from '@/mocks';
 import type { RespuestaUno, Sesion, Usuario } from '@/tipos';
@@ -20,20 +19,10 @@ import {
 const CLAVE_TOKEN = 'sesion.token';
 const CLAVE_USUARIO = 'sesion.usuario';
 
-// En web no hay SecureStore: sólo para probar en el navegador durante el desarrollo.
 const almacen = {
-  leer: (clave: string) =>
-    Platform.OS === 'web'
-      ? Promise.resolve(globalThis.localStorage?.getItem(clave) ?? null)
-      : SecureStore.getItemAsync(clave),
-  escribir: (clave: string, valor: string) =>
-    Platform.OS === 'web'
-      ? Promise.resolve(globalThis.localStorage?.setItem(clave, valor))
-      : SecureStore.setItemAsync(clave, valor),
-  borrar: (clave: string) =>
-    Platform.OS === 'web'
-      ? Promise.resolve(globalThis.localStorage?.removeItem(clave))
-      : SecureStore.deleteItemAsync(clave),
+  leer: (clave: string) => SecureStore.getItemAsync(clave),
+  escribir: (clave: string, valor: string) => SecureStore.setItemAsync(clave, valor),
+  borrar: (clave: string) => SecureStore.deleteItemAsync(clave),
 };
 
 export async function iniciarSesion(email: string, contrasena: string): Promise<Usuario> {
