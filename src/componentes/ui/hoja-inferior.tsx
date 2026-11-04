@@ -1,7 +1,16 @@
-import { useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-import { Animated, Modal, PanResponder, Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useCampoALaVista } from './desplazable-con-teclado';
 import { Texto } from './texto';
 
 type Props = PropsWithChildren<{
@@ -28,6 +37,11 @@ export function HojaInferior({ abierta, titulo, alCerrar, children }: Props) {
   // Arrastrar hacia abajo sobre la lista sólo cierra si la lista está arriba de todo; si no, se
   // desplaza la lista.
   const [listaArriba, setListaArriba] = useState(true);
+  // Con un campo (comentario, número del original), la hoja sube con el teclado y el campo queda a
+  // la vista.
+  const lista = useRef<ScrollView>(null);
+  const desplazamientoLista = useRef(0);
+  useCampoALaVista(lista, desplazamientoLista);
 
   useEffect(() => {
     if (abierta) desplazamiento.setValue(0);
@@ -82,7 +96,7 @@ export function HojaInferior({ abierta, titulo, alCerrar, children }: Props) {
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={alCerrar}>
-      <View className="flex-1 justify-end bg-sobre-celeste/60">
+      <KeyboardAvoidingView className="flex-1 justify-end bg-sobre-celeste/60" behavior="padding">
         {/* El velo: tocarlo cierra, igual que el botón atrás. */}
         <Pressable
           className="flex-1"
@@ -107,17 +121,19 @@ export function HojaInferior({ abierta, titulo, alCerrar, children }: Props) {
             </Texto>
           </View>
           <ScrollView
+            ref={lista}
             contentContainerClassName="gap-3 px-6 pb-2"
             keyboardShouldPersistTaps="handled"
             scrollEventThrottle={32}
             onScroll={(evento) => {
+              desplazamientoLista.current = evento.nativeEvent.contentOffset.y;
               const arriba = evento.nativeEvent.contentOffset.y <= 0;
               if (arriba !== listaArriba) setListaArriba(arriba);
             }}>
             {children}
           </ScrollView>
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
