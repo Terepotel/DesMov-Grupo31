@@ -1,12 +1,13 @@
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Pressable, ScrollView, View } from 'react-native';
+import { AccessibilityInfo, Pressable, View, type ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { CampoTexto } from '@/componentes/ui/campo-texto';
+import { DesplazableConTeclado } from '@/componentes/ui/desplazable-con-teclado';
 import { FichaTipo, FichaTipoCargando } from '@/componentes/ui/ficha-tipo';
 import { HojaInferior } from '@/componentes/ui/hoja-inferior';
 import { Icono } from '@/componentes/ui/icono';
@@ -306,11 +307,9 @@ export function PantallaNuevoReporte() {
   if (sumado) return <ReporteEnviado reporte={sumado.reporte} sumado={sumado} />;
 
   return (
-    <ScrollView
+    <DesplazableConTeclado
       ref={scroll}
       className="flex-1 bg-fondo"
-      keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets
       contentContainerStyle={{ paddingTop: margenes.top + 8, paddingBottom: margenes.bottom + 48 }}>
       <View className="w-full max-w-lg gap-8 self-center px-6">
         <View className="items-start gap-2">
@@ -481,7 +480,7 @@ export function PantallaNuevoReporte() {
           alVerDetalle={verDetalle}
         />
       )}
-    </ScrollView>
+    </DesplazableConTeclado>
   );
 }
 

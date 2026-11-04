@@ -2,12 +2,13 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Linking, ScrollView, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Aviso } from '@/componentes/ui/aviso';
 import { Boton } from '@/componentes/ui/boton';
 import { CampoTexto } from '@/componentes/ui/campo-texto';
+import { DesplazableConTeclado } from '@/componentes/ui/desplazable-con-teclado';
 import { Icono } from '@/componentes/ui/icono';
 import { Texto } from '@/componentes/ui/texto';
 import { codigoDesdeQr, esCodigoDeSeguimiento } from '@/utilidades/reportes';
@@ -52,9 +53,8 @@ export function PantallaEscanear() {
   };
 
   return (
-    <ScrollView
+    <DesplazableConTeclado
       className="flex-1 bg-fondo"
-      keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ paddingTop: margenes.top + 48, paddingBottom: 48 }}>
       <View className="w-full max-w-lg gap-8 self-center px-6">
         <View className="gap-2">
@@ -76,7 +76,7 @@ export function PantallaEscanear() {
 
         <CodigoAMano alAbrir={abrir} />
       </View>
-    </ScrollView>
+    </DesplazableConTeclado>
   );
 }
 
